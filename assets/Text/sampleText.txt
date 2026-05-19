@@ -1,0 +1,1 @@
+This is sample text that is shipped in the assets file. It's read by the asset loader and presented here. It's pretty boring, maybe you can spice it up??

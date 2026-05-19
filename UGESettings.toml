@@ -1,0 +1,19 @@
+﻿WindowTitle = "Untitled Game Engine"
+WindowWidth = 1600
+WindowHeight = 1200
+InitScript = "assets/lua/initApp.lua"
+
+[Modules]
+# Platform-independent module names (platform suffix determined automatically)
+Load = ["UIWindows", "DemoGame", "TeaPot3D"]
+
+[[MountPoints]]
+RealPath = "assets.pak"
+VirtualPath = "/"
+Prepend = true
+
+[[MountPoints]]
+RealPath = "OVERRIDE/assets"
+VirtualPath = "/assets"
+Prepend = true
+

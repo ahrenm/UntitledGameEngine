@@ -1,0 +1,86 @@
+﻿# platformerMap.toml
+# Tile map for PlatformerScene.
+# Coordinates are in reference-resolution pixels (1600 x 1200).
+# sprite must match an entry in the tile sprite registry.
+
+# ── Ground row ────────────────────────────────────────────────────────────────
+
+[[tiles]]
+x = 0.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 160.0
+y = 1040.0
+sprite = "tile-dirt"
+
+[[tiles]]
+x = 320.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 480.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 640.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 800.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 960.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 1120.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 1280.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 1440.0
+y = 1040.0
+sprite = "tile-ground"
+
+[[tiles]]
+x = 1600.0
+y = 1040.0
+sprite = "tile-ground"
+
+# ── Elevated platforms ────────────────────────────────────────────────────────
+
+[[tiles]]
+x = 160.0
+y = 880.0
+sprite = "tile-ridge"
+
+[[tiles]]
+x = 560.0
+y = 640.0
+sprite = "tile-block"
+
+[[tiles]]
+x = 880.0
+y = 800.0
+sprite = "tile-block"
+
+# ── Coins (collectible; require a jump to reach) ──────────────────────────────
+
+[[tiles]]
+x = 640.0
+y = 260.0
+sprite = "tile-coin"
+

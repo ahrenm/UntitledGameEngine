@@ -1,0 +1,48 @@
+﻿# platformerData.toml
+# Runtime configuration for PlatformerScene.
+
+[physics]
+gravity        = 1.5
+ground_epsilon = 2.0
+speed          = 8.0
+jump_height    = 280.0
+
+[assets]
+background = "assets/gameBG.png"
+document   = "assets/ui/platformer.rml"
+tile_map   = "assets/DATA/platformerMap.toml"
+
+[tiles]
+tile_ground = "assets/Sprites/TileGround.png"
+tile_dirt   = "assets/Sprites/TileDirt.png"
+tile_ridge  = "assets/Sprites/TileRidge.png"
+tile_block  = "assets/Sprites/TileBlock.png"
+tile_coin   = "assets/Sprites/Coin.png"
+
+[character.walk]
+sprite         = "assets/Sprites/Walking_KG_1.png"
+frame_w        = 100
+frame_h        = 64
+padding_h      = 0
+start_frame    = 0
+frame_count    = 7
+frame_duration = 0.1
+
+[character.jump]
+sprite         = "assets/Sprites/Jump_KG_1.png"
+frame_w        = 100
+frame_h        = 64
+padding_h      = 0
+start_frame    = 0
+frame_count    = 6
+frame_duration = 0.1
+
+[character.fall]
+sprite         = "assets/Sprites/Fall_KG_1.png"
+frame_w        = 100
+frame_h        = 64
+padding_h      = 0
+start_frame    = 0
+frame_count    = 3
+frame_duration = 0.1
+

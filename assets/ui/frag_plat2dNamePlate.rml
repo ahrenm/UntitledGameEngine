@@ -1,0 +1,7 @@
+<div class="nameplate" data-model="plat2d-nameplate"
+     data-if="panel_visible"
+     data-style-left="panel_left + 'px'"
+     data-style-top="panel_top + 'px'"
+     data-style-width="panel_width + 'px'">
+    <span class="nameplate-label">{{character_name}}</span>
+</div>

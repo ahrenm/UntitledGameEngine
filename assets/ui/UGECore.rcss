@@ -1,0 +1,136 @@
+body {
+    background-color: transparent;
+    font-family: LatoLatin;
+    font-size: 22px;
+}
+
+/* ── LUA window ───────────────────────────────────────────── */
+.lua-window {
+    position: absolute;
+    z-index: 100;
+    width: 1000px;
+    background-color: #1e1e2e;
+    border: 4px #4a4a6a;
+    border-radius: 32px;
+    font-family: LatoLatin;
+    color: #cdd6f4;
+}
+
+/* ── Title bar ──────────────────────────────────────────────── */
+.lua-titlebar {
+    background-color: #313244;
+    border-radius: 32px 32px 0px 0px;
+    padding: 0px 5px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+}
+
+.lua-titlebar .title {
+    flex-grow: 1;
+    font-weight: bold;
+    color: #cdd6f4;
+    line-height: 50px;
+}
+
+.lua-titlebar .close-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background-color: #f38ba8;
+    color: #1e1e2e;
+    font-weight: bold;
+    text-align: center;
+    line-height: 28px;
+    cursor: pointer;
+}
+.lua-titlebar .close-btn:hover {
+    background-color: #ff99aa;
+}
+
+/* ── Content area / log ─────────────────────────────────────── */
+.lua-content {
+    padding: 5px;
+    height: 320px;
+    overflow-y: scroll;
+    color: #bac2de;
+    line-height: 1.6em;
+    border-bottom: 4px #4a4a6a;
+}
+
+/* Thin dark scrollbar */
+.lua-content scrollbarvertical {
+    width: 8px;
+}
+.lua-content scrollbarvertical slidertrack {
+    background-color: #181825;
+}
+.lua-content scrollbarvertical sliderbar {
+    background-color: #585b70;
+    border-radius: 4px;
+    min-height: 24px;
+}
+.lua-content scrollbarvertical sliderbar:hover {
+    background-color: #89b4fa;
+}
+.lua-content scrollbarvertical sliderarrowdec,
+.lua-content scrollbarvertical sliderarrowinc {
+    width: 0px;
+    height: 0px;
+}
+
+.lua-log-line-row {
+    display: block;
+    width: 100%;
+}
+
+.lua-log-line {
+    display: block;
+    padding: 1px 4px;
+    overflow: hidden;
+    /* ── when rendered as a readonly input ───────────────────────────── */
+    background-color: transparent;
+    border: 0px;
+    color: #bac2de;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: LatoLatin;
+}
+
+
+/* ── Input row ──────────────────────────────────────────────── */
+.lua-input-row {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+}
+
+.lua-input-row input {
+    flex-grow: 1;
+    background-color: #181825;
+    color: #cdd6f4;
+    border: 4px #585b70;
+    border-radius: 16px 0px 0px 16px;
+    padding: 6px 12px;
+    height: 48px;
+    box-sizing: border-box;
+}
+
+.lua-input-row input:focus {
+    border: 4px #89b4fa;
+}
+
+.lua-input-row .submit-btn {
+    background-color: #89b4fa;
+    color: #1e1e2e;
+    border: 0px;
+    border-radius: 0px 16px 16px 0px;
+    padding: 0px 28px;
+    height: 48px;
+    font-weight: bold;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.lua-input-row .submit-btn:hover {
+    background-color: #b4d0ff;
+}
