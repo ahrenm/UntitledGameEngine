@@ -1,25 +1,16 @@
-﻿#include <Layers/UGEDataLayer.h>
+#include <Layers/UGEDataLayer.h>
+#include <Layers/DataStores/DatasetLoader.h>
+#include <Layers/DataStores/DataValue.h>
 #include <Layers/PhysFSLayer.h>
 #include <Layers/LoggingLayer.h>
 #include <ServiceLocator.h>
-#include <algorithm>
 #include <format>
+#include <string>
+#include <utility>
 
 // ── UGEDataLayer ──────────────────────────────────────────────────────────────
 
-UGEDataLayer::UGEDataLayer()
-{
-    // Wire each store's m_onNotify to dispatch cross-store prefix subscriptions.
-    auto prefixDispatch = [this](const std::string& Key, const AppStateValue& Val)
-    {
-        for (auto& Sub : m_prefixSubs)
-            if (Key.starts_with(Sub.prefix))
-                Sub.callback(Key, Val);
-    };
-
-    State.m_onNotify     = prefixDispatch;
-    Transient.m_onNotify = prefixDispatch;
-}
+UGEDataLayer::UGEDataLayer() = default;
 
 UGEDataLayer::~UGEDataLayer() = default;
 
@@ -31,170 +22,205 @@ std::expected<std::unique_ptr<UGEDataLayer>, std::string> UGEDataLayer::Create()
     if (!Physfs)
         return std::unexpected("UGEDataLayer::Create — PhysFSLayer is not registered");
 
-    auto* Log = ServiceLocator::TryGet<LoggingLayer>();
-    auto logMsg = [Log](const std::string& Msg) { if (Log) Log->Log(Msg); };
-
-    const auto Files = Physfs->ListFiles("assets/DATA");
-    int Loaded = 0, Skipped = 0;
-
-    for (const auto& Path : Files)
-    {
-        if (!Path.ends_with(".toml")) { ++Skipped; continue; }
-
-        if (Layer->Data.LoadFile(Path))
-        {
-            ++Loaded;
-            logMsg("UGEDataLayer: loaded dataset from " + Path);
-        }
-        // LoadFile already logs parse/read errors internally.
-    }
-
-    logMsg("UGEDataLayer: " + std::to_string(Loaded) + " dataset(s) loaded, " +
-           std::to_string(Skipped) + " non-toml file(s) skipped in assets/DATA/");
+    // Populate Store from every *.toml under assets/DATA/ (Source = TomlDataset).
+    DatasetLoader::LoadAll(Layer->Store, "assets/DATA");
 
     return Layer;
 }
 
+// ── Prefix subscriptions ────────────────────────────────────────────────────────
+
 UGEDataLayer::SubscriptionToken
 UGEDataLayer::SubscribePrefix(const std::string& Prefix, ChangeCallback Cb)
 {
-    const auto Token = m_nextPrefixToken++;
-    m_prefixSubs.push_back({ Prefix, std::move(Cb), Token });
-    return Token;
+    return Store.SubscribePrefix(Prefix, std::move(Cb));
 }
 
 void UGEDataLayer::UnsubscribePrefix(SubscriptionToken Token)
 {
-    std::erase_if(m_prefixSubs,
-        [Token](const PrefixSubscription& S) { return S.token == Token; });
+    Store.Unsubscribe(Token);
 }
 
-// ── Serialisation ─────────────────────────────────────────────────────────────
+// ── Serialisation ───────────────────────────────────────────────────────────────
 
-bool UGEDataLayer::SaveState(const char* FilePath)
+bool UGEDataLayer::Save(const char* FilePath)
 {
-    return m_serializer.Save(State, FilePath);
+    return m_serializer.Save(Store, FilePath);
 }
 
-bool UGEDataLayer::LoadState(const char* FilePath)
+bool UGEDataLayer::Load(const char* FilePath)
 {
-    return m_serializer.Load(State, FilePath);
+    return m_serializer.Load(Store, FilePath);
 }
 
-// ── ScriptableObject ──────────────────────────────────────────────────────────
+// ── Deferred write-queue (§8) ────────────────────────────────────────────────────
+
+void UGEDataLayer::QueueSet(Tag Key, DataValue Val, DataMeta Meta)
+{
+    m_writeQueue.push_back(QueuedWrite{ std::move(Key), std::move(Val), std::move(Meta), false });
+}
+
+void UGEDataLayer::QueueRemove(Tag Key)
+{
+    m_writeQueue.push_back(QueuedWrite{ std::move(Key), DataValue{}, DataMeta{}, true });
+}
+
+void UGEDataLayer::Update()
+{
+    if (m_writeQueue.empty())
+        return;
+
+    // Drain on the main thread at the frame sync point.  Swap first so callbacks
+    // fired by Set() that enqueue further writes are deferred to the next frame
+    // rather than mutating the container mid-iteration.
+    std::vector<QueuedWrite> Pending;
+    Pending.swap(m_writeQueue);
+
+    for (auto& Cmd : Pending)
+    {
+        if (Cmd.remove)
+            Store.Remove(Cmd.key);
+        else
+            Store.Set(Cmd.key, std::move(Cmd.value), std::move(Cmd.meta));
+    }
+}
+
+// ── ScriptableObject ─────────────────────────────────────────────────────────────
 
 void UGEDataLayer::RegisterObject(sol::state& Lua)
 {
     auto dataTable = Lua.create_named_table("Data");
 
-    // ── Data.SetTransient(key, value) ────────────────────────────────────────
-    // If the key already exists the incoming Lua value is coerced to the
-    // backing variant type (int / float / string); a mismatch is logged.
-    // If the key is absent the type is inferred from the Lua value.
-    dataTable.set_function("SetTransient",
+    // ── Data.Set(key, value) ─────────────────────────────────────────────────
+    // If the key already exists the incoming Lua value is coerced to the current
+    // backing type (int / float / string) and the entry's meta is preserved.
+    // If the key is absent the type is inferred and default (transient) meta used.
+    dataTable.set_function("Set",
         [this](const std::string& Key, sol::object Value)
         {
-            const AppStateValue* Existing = Transient.Get(Key);
+            const DataEntry* Existing = Store.Find(Key);
 
             auto logMismatch = [&](std::string_view Expected)
             {
-                Log(std::format("Data.SetTransient: type mismatch for '{}' — expected {}, got {}",
+                Log(std::format("Data.Set: type mismatch for '{}' — expected {}, got {}",
                     Key, Expected, sol::type_name(Value.lua_state(), Value.get_type())));
             };
 
+            // Preserve existing meta on overwrite; default (transient) for new keys.
+            const DataMeta Meta = Existing ? Existing->Meta : DataMeta{};
+
             if (Existing)
             {
-                // Cast Lua value to the existing backing type.
-                if (std::holds_alternative<int>(*Existing))
+                const DataValue& Cur = Existing->Value;
+
+                if (Cur.TryAs<int>())
                 {
                     if (Value.is<int>())
-                        Transient.Set(Key, AppStateValue{Value.as<int>()});
+                        Store.Set(Key, DataValue{Value.as<int>()}, Meta);
                     else if (Value.is<double>())
-                        Transient.Set(Key, AppStateValue{static_cast<int>(Value.as<double>())});
+                        Store.Set(Key, DataValue{static_cast<int>(Value.as<double>())}, Meta);
                     else
                         logMismatch("int");
                 }
-                else if (std::holds_alternative<float>(*Existing))
+                else if (Cur.TryAs<float>())
                 {
                     if (Value.is<double>())
-                        Transient.Set(Key, AppStateValue{static_cast<float>(Value.as<double>())});
+                        Store.Set(Key, DataValue{static_cast<float>(Value.as<double>())}, Meta);
                     else if (Value.is<int>())
-                        Transient.Set(Key, AppStateValue{static_cast<float>(Value.as<int>())});
+                        Store.Set(Key, DataValue{static_cast<float>(Value.as<int>())}, Meta);
                     else
                         logMismatch("float");
                 }
-                else if (std::holds_alternative<std::string>(*Existing))
+                else if (Cur.TryAs<std::string>())
                 {
                     if (Value.is<std::string>())
-                        Transient.Set(Key, AppStateValue{Value.as<std::string>()});
+                        Store.Set(Key, DataValue{Value.as<std::string>()}, Meta);
                     else
                         logMismatch("string");
+                }
+                else
+                {
+                    Log(std::format("Data.Set: '{}' holds a non-scalar type ({}); "
+                        "cannot coerce from Lua", Key, Cur.Type().name()));
                 }
             }
             else
             {
-                // New key — infer type from Lua value.
+                // New key — infer type from the Lua value.
                 if (Value.is<std::string>())
-                    Transient.Set(Key, AppStateValue{Value.as<std::string>()});
+                    Store.Set(Key, DataValue{Value.as<std::string>()}, Meta);
                 else if (Value.is<int>())
-                    Transient.Set(Key, AppStateValue{Value.as<int>()});
+                    Store.Set(Key, DataValue{Value.as<int>()}, Meta);
                 else if (Value.is<double>())
-                    Transient.Set(Key, AppStateValue{static_cast<float>(Value.as<double>())});
+                    Store.Set(Key, DataValue{static_cast<float>(Value.as<double>())}, Meta);
                 else
-                    Log(std::format("Data.SetTransient: unsupported value type for '{}' ({})",
+                    Log(std::format("Data.Set: unsupported value type for '{}' ({})",
                         Key, sol::type_name(Value.lua_state(), Value.get_type())));
             }
         });
 
-    // ── Data.GetTransient(key) ───────────────────────────────────────────────
-    // Returns the stored value as a Lua int, number, or string.
-    // Returns nil if the key is absent.
-    dataTable.set_function("GetTransient",
+    // ── Data.Get(key) ────────────────────────────────────────────────────────
+    // Returns the stored value marshalled to Lua via the type's ValueConverter.
+    // Returns nil if the key is absent or its type has no registered converter.
+    dataTable.set_function("Get",
         [this](const std::string& Key, sol::this_state S) -> sol::object
         {
-            const AppStateValue* Val = Transient.Get(Key);
-            if (!Val)
+            const DataValue* Val = Store.Get(Key);
+            if (!Val || !Val->HasValue())
                 return sol::make_object(S, sol::nil);
 
-            return std::visit([&](const auto& V) -> sol::object
-            {
-                return sol::make_object(S, V);
-            }, *Val);
+            const ValueConverter* Conv =
+                ValueConverterRegistry::Instance().Find(Val->Type());
+            if (!Conv || !Conv->ToLua)
+                return sol::make_object(S, sol::nil);
+
+            return Conv->ToLua(S, Val->Any());
         });
 
-    // ── Data.ShowTransient() ─────────────────────────────────────────────────
-    // Iterates the transient store and logs every key/value pair.
-    dataTable.set_function("ShowTransient",
+    // ── Data.Show() ──────────────────────────────────────────────────────────
+    // Logs every entry in the store with its value and provenance.
+    dataTable.set_function("Show",
         [this]()
         {
-            // Collect entries via ForEach so we have the count up front.
-            std::vector<std::pair<std::string, std::string>> Entries;
-            Transient.ForEach([&](const std::string& Key, const AppStateValue& Val)
+            auto sourceLabel = [](DataSource Src) -> const char*
             {
-                std::string ValStr = std::visit([](const auto& V) -> std::string
+                switch (Src)
                 {
-                    using T = std::decay_t<decltype(V)>;
-                    if constexpr (std::is_same_v<T, int>)
-                        return std::format("(int) {}", V);
-                    else if constexpr (std::is_same_v<T, float>)
-                        return std::format("(float) {}", V);
-                    else
-                        return std::format("(string) \"{}\"", V);
-                }, Val);
-                Entries.emplace_back(Key, std::move(ValStr));
+                case DataSource::TomlDataset:      return "dataset";
+                case DataSource::Config:           return "config";
+                case DataSource::RuntimeTransient: return "transient";
+                case DataSource::Serialized:       return "serialized";
+                default:                           return "unknown";
+                }
+            };
+
+            std::vector<std::string> Lines;
+            Store.ForEach([&](const Tag& Key, const DataEntry& Entry)
+            {
+                const DataValue& V = Entry.Value;
+                std::string ValStr;
+                if (const int* I = V.TryAs<int>())
+                    ValStr = std::format("(int) {}", *I);
+                else if (const float* F = V.TryAs<float>())
+                    ValStr = std::format("(float) {}", *F);
+                else if (const std::string* Str = V.TryAs<std::string>())
+                    ValStr = std::format("(string) \"{}\"", *Str);
+                else
+                    ValStr = std::format("({})", V.HasValue() ? V.Type().name() : "empty");
+
+                Lines.push_back(std::format("  {} = {}  [{}]",
+                    Key.Str(), ValStr, sourceLabel(Entry.Meta.Source)));
             });
 
-            if (Entries.empty())
+            if (Lines.empty())
             {
-                Log("[Data] Transient store is empty");
+                Log("[Data] store is empty");
                 return;
             }
 
-            Log("[Data] Transient store (" +
-                std::to_string(Entries.size()) + " entries):");
-
-            for (const auto& [Key, ValStr] : Entries)
-                Log(std::format("  {} = {}", Key, ValStr));
+            Log("[Data] store (" + std::to_string(Lines.size()) + " entries):");
+            for (const auto& Line : Lines)
+                Log(Line);
         });
 }
 
@@ -202,4 +228,3 @@ void UGEDataLayer::RegisterWithServiceLocator()
 {
     ServiceLocator::Provide(this);
 }
-

@@ -2,61 +2,55 @@
 #include <GameClasses/ViewModel.h>
 #include <ViewModelRegistry.h>
 #include <Layers/UGEDataLayer.h>
+#include "StateAssetsDemoKeys.h"   // shared KEY_* DataStore keys (no Scene dependency)
 #include <string>
 
 // ── StateAssetsDemoViewModel ───────────────────────────────────────────────────
-// Data model for the State / Assets demo page (data-model="state-assets-demo").
+// Thin UI data model for the State / Assets demo page (data-model="state-assets-demo").
+// The "character.*" DataStore keys are the single source of truth; this ViewModel
+// caches local copies for the RML two-way bindings, pushes them into the store on
+// Save, and data-binds to the character fields + the "character.data" container so
+// a Scene-driven Load refreshes the UI reactively (see StateAssetsDemoKeys.h).
 class StateAssetsDemoViewModel : public ViewModel
 {
 public:
     REGISTER_VIEWMODEL("state-assets-demo", StateAssetsDemoViewModel)
-
-    // Transient key that gates load-button visibility.
-    // Set to 1 by StateAssetsDemoScene on construction if Game.sav exists,
-    // and again by saveToDataLayer after a successful save.
-    static constexpr std::string_view KEY_LOAD_VISIBLE = "unhideSaveButton";
 
     void RegisterWith(Rml::Context* Context, const char* ModelName) override;
 
 private:
     Rml::DataModelHandle m_model;
 
-    // ── Table 1: Character data entry ─────────────────────────────────────────
+    // ── Table 1: Character data entry (cached copies of character.*) ──────────
     std::string m_characterName;
     std::string m_strength;
     std::string m_mana;
 
-    // ── Table 1: Free key/value pairs ─────────────────────────────────────────
+    // ── Table 1: First three "character.data.<key>" pairs (from the container) ─
     std::string m_kvKey1, m_kvVal1;
     std::string m_kvKey2, m_kvVal2;
     std::string m_kvKey3, m_kvVal3;
 
     // ── Table 1: Status bar ───────────────────────────────────────────────────
     std::string m_statusText         = "Ready.";
-    int         m_loadButtonVisible  = 0;     // ViewModel-only; no transient backer
+    int         m_loadButtonVisible  = 0;
 
     // ── Table 2: Sample text loaded from VFS ─────────────────────────────────
     std::string m_sampleText;
 
-    // ── In-memory save slot ───────────────────────────────────────────────────
-    struct SaveSlot
-    {
-        std::string characterName, strength, mana;
-        std::string kvKey1, kvVal1;
-        std::string kvKey2, kvVal2;
-        std::string kvKey3, kvVal3;
-    };
-    SaveSlot m_savedSlot;
-    bool     m_hasSave = false;
+    // Pushes the cached character fields and free KV pairs into the persistent
+    // "character.*" keys ahead of a save request.
+    void pushCharacterToStore();
 
-    // Reactive binding for load-button visibility (driven by KEY_LOAD_VISIBLE transient).
-    AppStateBinding m_loadBinding;
+    // Reads the first three "character.data.<key>" entries from the store into the
+    // kv members and dirties the bound RML variables (display refresh on Load).
+    void readContainerIntoUI();
 
-    // Validates strength/mana, writes character data and free KV pairs to the
-    // persistent store, serialises to Game.sav, and updates m_statusText.
-    void saveToDataLayer();
-
-    // Deserialises Game.sav into the persistent store, reads character fields
-    // and up to three free KV pairs, and updates all m_ variables + model.
-    void loadFromDataLayer();
+    // Scene ↔ UI reactive bindings.
+    DataBinding m_nameBinding;      // character.name      → m_characterName
+    DataBinding m_strengthBinding;  // character.strength  → m_strength
+    DataBinding m_manaBinding;      // character.mana      → m_mana
+    DataBinding m_dataBinding;      // character.data.*    → kv members (prefix watch)
+    DataBinding m_statusBinding;    // stateAssets.status  (scene → UI)
+    DataBinding m_loadBinding;      // stateAssets.loadVisible (scene → UI)
 };

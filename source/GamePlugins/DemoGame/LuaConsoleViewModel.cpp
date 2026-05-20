@@ -107,7 +107,7 @@ bool LuaConsoleViewModel::HandleEvent(SDL_Event& Event)
         // Do not mutate m_visible directly; bindings propagate the change.
         if (Scancode == SDL_SCANCODE_GRAVE)
         {
-            setTransient(".visible", AppStateValue{IsVisible() ? 0 : 1});
+            setTransient(".visible", DataValue{IsVisible() ? 0 : 1});
             return true;
         }
 

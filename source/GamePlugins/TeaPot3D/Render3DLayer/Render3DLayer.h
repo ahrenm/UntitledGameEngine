@@ -2,9 +2,9 @@
 #include <Layers/AppLayer.h>
 #include <IScriptableObject.h>
 #include <LayerRegistry.h>
-#include <Render3D/Camera3D.h>
-#include <Render3D/Light3D.h>
-#include <Render3D/Mesh3D.h>
+#include "Camera3D.h"
+#include "Light3D.h"
+#include "Mesh3D.h"
 #include <SDL3/SDL.h>
 #include <expected>
 #include <memory>
@@ -139,7 +139,7 @@ public:
 
     // ── AppLayer ──────────────────────────────────────────────────────────────
     void Update() override; // processes pending model load; early-outs if inactive
-    void Tick(float deltaTime) override; // CPU rasterization pass; early-outs if inactive
+    void Draw(float deltaTime) override; // CPU rasterization pass; early-outs if inactive
 
     // ── IScriptableObject ─────────────────────────────────────────────────────
     // Registers the "Render3D" Lua table:

@@ -5,7 +5,7 @@ TestWindowViewModel::TestWindowViewModel()
 {
     // Show by default for this test window. This writes the runtime-backed
     // key and lets WindowViewModel bindings update local state.
-    setTransient(".visible", AppStateValue{1});
+    setTransient(".visible", DataValue{1});
 }
 
 void TestWindowViewModel::RegisterWith(Rml::Context* Context, const char* ModelName)

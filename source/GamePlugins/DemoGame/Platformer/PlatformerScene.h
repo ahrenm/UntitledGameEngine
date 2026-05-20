@@ -5,18 +5,19 @@
 #include <PlatformerHudViewModel.h>
 #include <PlatformerCharacter.h>
 #include <PlatformerStateTags.h>
+#include <Physics/PhysicsBodyHandle.h>
 #include <memory>
 
 // ── PlatformerScene ───────────────────────────────────────────────────────────
+// Owns the tile world, physics world (via PhysicsLayer), score binding, and
+// contact-event dispatch.  InitPhysics() is called in the constructor before
+// tiles and the character are created, so all bodies are registered in the
+// same Box2D world.  ShutdownPhysics() is called automatically by
+// SDLLayer::UnloadScene() after the scene (and all its handles) are destroyed.
 //
-//  Reference resolution : 1600 × 1200.  All positions, sizes, and speeds are
-//  expressed in reference pixels.  Tick() scales them to the actual window size
-//  at render time so the scene looks identical at any resolution.
-//
-//  Owns the tile world, score binding, and coin collection.  After the character
-//  updates its collision box each frame, PlatformerScene::Update() queries the
-//  coin BoxCollisionGrid, hides any hit tiles, and updates the score directly.
-//
+// Boundary bodies (m_leftWall, m_rightWall, m_worldFloor) replace all game-code
+// wall/floor detection: the character no longer clamps its X position or resets
+// on fall-through — Box2D static geometry handles containment.
 class PlatformerScene : public SceneObject, public IScriptableObject
 {
 public:
@@ -25,14 +26,12 @@ public:
     PlatformerScene(SDL_Renderer* Renderer, SDL_Window* Window);
 
     void Update()                      override;
-    void Tick(float deltaTime)         override;
+    void Draw(float deltaTime)         override;
     bool HandleEvent(SDL_Event& Event) override;
 
-    // ── IScriptableObject — delegates to PlatformerCharacter ─────────────────
     void RegisterObject(sol::state& Lua)   override;
     void UnregisterObject(sol::state& Lua) override;
 
-    // ── State keys ────────────────────────────────────────────────────────────
     static constexpr const char* SCORE_KEY           = PlatformerHudViewModel::SCORE_KEY;
     static constexpr const char* PLATFORMER_DATA_KEY = "platformerData";
 
@@ -40,14 +39,18 @@ private:
     static constexpr float REF_W = 1600.0f;
     static constexpr float REF_H = 1200.0f;
 
-    // ── Score ─────────────────────────────────────────────────────────────────
     int             m_score        = 0;
-    AppStateBinding m_scoreBinding;
+    DataBinding m_scoreBinding;
 
-    // ── Tile world ────────────────────────────────────────────────────────────
+    // ── Physics boundary bodies ────────────────────────────────────────────────
+    // Created once in the constructor so Box2D enforces world edges without any
+    // game-code clamping.  Destroyed automatically via RAII when the scene ends.
+    PhysicsBodyHandle m_leftWall;
+    PhysicsBodyHandle m_rightWall;
+    PhysicsBodyHandle m_worldFloor;
+
     TileWorld m_world;
-
-
-    // ── Player character ──────────────────────────────────────────────────────
     std::unique_ptr<PlatformerCharacter> m_character;
+
+    void checkCoinCollection();
 };

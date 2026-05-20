@@ -1,86 +1,96 @@
 ﻿# platformerMap.toml
 # Tile map for PlatformerScene.
-# Coordinates are in reference-resolution pixels (1600 x 1200).
-# sprite must match an entry in the tile sprite registry.
+#
+# Coordinate system: Y-up world pixels (reference 1600 × 1200).
+#   x = left edge of tile (world pixels, 0 = left of reference area)
+#   y = BOTTOM edge of tile (world pixels, 0 = world floor / bottom of reference area)
+#   Y increases upward.  Tile occupies [y, y+160] in the vertical axis.
+#
+# sprite must match an entry in the tile sprite registry (see platformerData.toml [tiles]).
 
-# ── Ground row ────────────────────────────────────────────────────────────────
+# ── Ground row (y=0: tiles sit on the world floor) ────────────────────────────
 
 [[tiles]]
 x = 0.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 160.0
-y = 1040.0
+y = 0.0
 sprite = "tile-dirt"
 
 [[tiles]]
 x = 320.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 480.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 640.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 800.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 960.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 1120.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 1280.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 1440.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 [[tiles]]
 x = 1600.0
-y = 1040.0
+y = 0.0
 sprite = "tile-ground"
 
 # ── Elevated platforms ────────────────────────────────────────────────────────
+# Conversion from old screen-space (Y-down):  new_y = REF_H - old_y - tile_h
+#   ridge  old_y=880  → new_y = 1200 - 880  - 160 = 160
+#   block  old_y=640  → new_y = 1200 - 640  - 160 = 400
+#   block  old_y=800  → new_y = 1200 - 800  - 160 = 240
 
 [[tiles]]
 x = 160.0
-y = 880.0
+y = 160.0
 sprite = "tile-ridge"
 
 [[tiles]]
 x = 560.0
-y = 640.0
+y = 400.0
 sprite = "tile-block"
 
 [[tiles]]
 x = 880.0
-y = 800.0
+y = 240.0
 sprite = "tile-block"
 
 # ── Coins (collectible; require a jump to reach) ──────────────────────────────
+# Conversion: old_y=260 → new_y = 1200 - 260 - 160 = 780
 
 [[tiles]]
 x = 640.0
-y = 260.0
+y = 780.0
 sprite = "tile-coin"
 

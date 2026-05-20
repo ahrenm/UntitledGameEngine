@@ -45,10 +45,10 @@ bool WindowViewModel::loadValue(const std::string& Key, float& OutValue) const
 {
     auto* DataLayer = GetDataLayer();
     if (!DataLayer || Key.empty()) return false;
-    const auto* Val = DataLayer->Transient.Get(Key);
+    const auto* Val = DataLayer->Store.Get(Key);
     if (!Val) return false;
-    if (const auto* F = std::get_if<float>(Val)) { OutValue = *F; return true; }
-    if (const auto* I = std::get_if<int>(Val))   { OutValue = static_cast<float>(*I); return true; }
+    if (const auto* F = Val->TryAs<float>()) { OutValue = *F; return true; }
+    if (const auto* I = Val->TryAs<int>())   { OutValue = static_cast<float>(*I); return true; }
     return false;
 }
 
@@ -56,10 +56,10 @@ bool WindowViewModel::loadValue(const std::string& Key, int& OutValue) const
 {
     auto* DataLayer = GetDataLayer();
     if (!DataLayer || Key.empty()) return false;
-    const auto* Val = DataLayer->Transient.Get(Key);
+    const auto* Val = DataLayer->Store.Get(Key);
     if (!Val) return false;
-    if (const auto* I = std::get_if<int>(Val))   { OutValue = *I; return true; }
-    if (const auto* F = std::get_if<float>(Val)) { OutValue = static_cast<int>(std::lround(*F)); return true; }
+    if (const auto* I = Val->TryAs<int>())   { OutValue = *I; return true; }
+    if (const auto* F = Val->TryAs<float>()) { OutValue = static_cast<int>(std::lround(*F)); return true; }
     return false;
 }
 
@@ -75,7 +75,7 @@ int WindowViewModel::allocateNextZOrder()
 
     const int Next = CurrentMax + 1;
     if (!Key.empty())
-        DataLayer->Transient.Set(Key, AppStateValue{Next});
+        DataLayer->Store.Set(Key, DataValue{Next});
     return Next;
 }
 
@@ -89,7 +89,7 @@ void WindowViewModel::syncCurrentWinZMax(int ZOrder)
 
     int CurrentMax = 0;
     if (!loadValue(Key, CurrentMax) || ZOrder > CurrentMax)
-        DataLayer->Transient.Set(Key, AppStateValue{ZOrder});
+        DataLayer->Store.Set(Key, DataValue{ZOrder});
 }
 
 bool WindowViewModel::LoadRuntimeState()
@@ -97,11 +97,12 @@ bool WindowViewModel::LoadRuntimeState()
     auto* DataLayer = GetDataLayer();
     if (!DataLayer) return false;
 
-    const auto* ActiveDocValue = DataLayer->Transient.Get("uiRuntime.activeDoc");
-    if (!ActiveDocValue || !std::holds_alternative<std::string>(*ActiveDocValue))
+    const auto* ActiveDocValue = DataLayer->Store.Get("uiRuntime.activeDoc");
+    const std::string* ActiveDocStr = ActiveDocValue ? ActiveDocValue->TryAs<std::string>() : nullptr;
+    if (!ActiveDocStr)
         return false;
 
-    m_activeDocSlug = RmlUILayer::NormalizeDocumentSlug(std::get<std::string>(*ActiveDocValue));
+    m_activeDocSlug = RmlUILayer::NormalizeDocumentSlug(*ActiveDocStr);
     if (m_activeDocSlug.empty())
         return false;
 
@@ -139,31 +140,31 @@ void WindowViewModel::setupTransientBindings()
     const std::string ZKey       = m_runtimePrefix + ".z";
     const std::string VisibleKey = m_runtimePrefix + ".visible";
 
-    m_posXBinding = APPSTATE_BIND_TRANSIENT(PosXKey.c_str(), 0.0f,
-        [this](const std::string&, const AppStateValue& V)
+    m_posXBinding = DATA_BIND(PosXKey.c_str(), 0.0f,
+        [this](const Tag&, const DataValue& V)
         {
-            if (const auto* F = std::get_if<float>(&V))       { m_windowLeft = *F; OnRuntimeStateChanged(); }
-            else if (const auto* I = std::get_if<int>(&V))    { m_windowLeft = static_cast<float>(*I); OnRuntimeStateChanged(); }
-        });
+            if (const auto* F = V.TryAs<float>())       { m_windowLeft = *F; OnRuntimeStateChanged(); }
+            else if (const auto* I = V.TryAs<int>())    { m_windowLeft = static_cast<float>(*I); OnRuntimeStateChanged(); }
+        }, Transient);
 
-    m_posYBinding = APPSTATE_BIND_TRANSIENT(PosYKey.c_str(), 0.0f,
-        [this](const std::string&, const AppStateValue& V)
+    m_posYBinding = DATA_BIND(PosYKey.c_str(), 0.0f,
+        [this](const Tag&, const DataValue& V)
         {
-            if (const auto* F = std::get_if<float>(&V))       { m_windowTop = *F; OnRuntimeStateChanged(); }
-            else if (const auto* I = std::get_if<int>(&V))    { m_windowTop = static_cast<float>(*I); OnRuntimeStateChanged(); }
-        });
+            if (const auto* F = V.TryAs<float>())       { m_windowTop = *F; OnRuntimeStateChanged(); }
+            else if (const auto* I = V.TryAs<int>())    { m_windowTop = static_cast<float>(*I); OnRuntimeStateChanged(); }
+        }, Transient);
 
-    m_zBinding = APPSTATE_BIND_TRANSIENT(ZKey.c_str(), 0,
-        [this](const std::string&, const AppStateValue& V)
+    m_zBinding = DATA_BIND(ZKey.c_str(), 0,
+        [this](const Tag&, const DataValue& V)
         {
-            if (const auto* I = std::get_if<int>(&V))         { m_windowZ = *I; syncCurrentWinZMax(*I); OnRuntimeStateChanged(); }
-        });
+            if (const auto* I = V.TryAs<int>())         { m_windowZ = *I; syncCurrentWinZMax(*I); OnRuntimeStateChanged(); }
+        }, Transient);
 
-    m_visibleBinding = APPSTATE_BIND_TRANSIENT(VisibleKey.c_str(), 0,
-        [this](const std::string&, const AppStateValue& V)
+    m_visibleBinding = DATA_BIND(VisibleKey.c_str(), 0,
+        [this](const Tag&, const DataValue& V)
         {
-            if (const auto* I = std::get_if<int>(&V))         { m_visible = (*I != 0); OnRuntimeStateChanged(); }
-        });
+            if (const auto* I = V.TryAs<int>())         { m_visible = (*I != 0); OnRuntimeStateChanged(); }
+        }, Transient);
 }
 
 void WindowViewModel::SaveRuntimeState()
@@ -175,18 +176,18 @@ void WindowViewModel::SaveRuntimeState()
     auto* DataLayer = GetDataLayer();
     if (!DataLayer || m_runtimePrefix.empty()) return;
 
-    DataLayer->Transient.Set(m_runtimePrefix + ".posX",    AppStateValue{m_windowLeft});
-    DataLayer->Transient.Set(m_runtimePrefix + ".posY",    AppStateValue{m_windowTop});
-    DataLayer->Transient.Set(m_runtimePrefix + ".z",       AppStateValue{m_windowZ});
-    DataLayer->Transient.Set(m_runtimePrefix + ".visible", AppStateValue{m_visible ? 1 : 0});
+    DataLayer->Store.Set(m_runtimePrefix + ".posX",    DataValue{m_windowLeft});
+    DataLayer->Store.Set(m_runtimePrefix + ".posY",    DataValue{m_windowTop});
+    DataLayer->Store.Set(m_runtimePrefix + ".z",       DataValue{m_windowZ});
+    DataLayer->Store.Set(m_runtimePrefix + ".visible", DataValue{m_visible ? 1 : 0});
     syncCurrentWinZMax(m_windowZ);
 }
 
-void WindowViewModel::setTransient(const char* Suffix, AppStateValue Value)
+void WindowViewModel::setTransient(const char* Suffix, DataValue Value)
 {
     auto* DataLayer = GetDataLayer();
     if (!DataLayer || m_runtimePrefix.empty()) return;
-    DataLayer->Transient.Set(m_runtimePrefix + Suffix, std::move(Value));
+    DataLayer->Store.Set(m_runtimePrefix + Suffix, std::move(Value));
 }
 
 void WindowViewModel::BindWindowStateToModel(Rml::DataModelHandle& Model,
@@ -284,23 +285,23 @@ bool WindowViewModel::HandleWindowDragEvent(SDL_Event& Event, const char* DragHa
 
 void WindowViewModel::SetPosition(float Left, float Top)
 {
-    setTransient(".posX", AppStateValue{Left});
-    setTransient(".posY", AppStateValue{Top});
+    setTransient(".posX", DataValue{Left});
+    setTransient(".posY", DataValue{Top});
 }
 
 void WindowViewModel::SetLeft(float Left)
 {
-    setTransient(".posX", AppStateValue{Left});
+    setTransient(".posX", DataValue{Left});
 }
 
 void WindowViewModel::SetTop(float Top)
 {
-    setTransient(".posY", AppStateValue{Top});
+    setTransient(".posY", DataValue{Top});
 }
 
 void WindowViewModel::SetZOrder(int ZOrder)
 {
-    setTransient(".z", AppStateValue{ZOrder});
+    setTransient(".z", DataValue{ZOrder});
 }
 
 void WindowViewModel::RaiseWindowToFront()
@@ -308,17 +309,17 @@ void WindowViewModel::RaiseWindowToFront()
     // allocateNextZOrder() increments currentWinZMax and returns the new value.
     // Writing it to transient fires the z binding which updates m_windowZ,
     // calls syncCurrentWinZMax, and calls OnRuntimeStateChanged().
-    setTransient(".z", AppStateValue{allocateNextZOrder()});
+    setTransient(".z", DataValue{allocateNextZOrder()});
 }
 
 void WindowViewModel::Show()
 {
-    setTransient(".visible", AppStateValue{1});
+    setTransient(".visible", DataValue{1});
 }
 
 void WindowViewModel::Hide()
 {
-    setTransient(".visible", AppStateValue{0});
+    setTransient(".visible", DataValue{0});
 }
 
 void WindowViewModel::ClampToViewport(float CanvasWidth, float CanvasHeight,
@@ -338,6 +339,6 @@ void WindowViewModel::ClampToViewport(float CanvasWidth, float CanvasHeight,
 
     // Compute clamped values from current members, then write to transient.
     // Binding callbacks update m_windowLeft/m_windowTop and dirty the model.
-    setTransient(".posX", AppStateValue{std::clamp(m_windowLeft, MinLeft, MaxLeft)});
-    setTransient(".posY", AppStateValue{std::clamp(m_windowTop,  MinTop,  MaxTop)});
+    setTransient(".posX", DataValue{std::clamp(m_windowLeft, MinLeft, MaxLeft)});
+    setTransient(".posY", DataValue{std::clamp(m_windowTop,  MinTop,  MaxTop)});
 }

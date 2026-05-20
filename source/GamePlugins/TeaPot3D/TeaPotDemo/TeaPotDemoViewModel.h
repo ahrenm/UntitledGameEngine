@@ -23,6 +23,6 @@ private:
     Rml::DataModelHandle m_model;
 
     std::string     m_lightColor = "white";   // bound to the <select> display
-    AppStateBinding m_lightColorBinding;
+    DataBinding     m_lightColorBinding;
 };
 

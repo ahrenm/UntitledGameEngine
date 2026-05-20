@@ -3,7 +3,7 @@
 #include "../IScriptableObject.h"
 #include "../IEventHandler.h"
 #include "../LayerRegistry.h"
-#include "../GameClasses/BoxCollisionRegistry.h"
+#include "../Camera2D.h"
 #include <SDL3/SDL.h>
 #include <expected>
 #include <functional>
@@ -47,6 +47,20 @@ public:
     [[nodiscard]] SDL_Renderer* Renderer()  const { return m_renderer.get(); }
     [[nodiscard]] bool          IsRunning() const { return m_running;        }
 
+    // ── Logical reference resolution ──────────────────────────────────────────
+    // Matches the values passed to SDL_SetRenderLogicalPresentation in Create().
+    [[nodiscard]] int RefWidth()  const { return m_refWidth;  }
+    [[nodiscard]] int RefHeight() const { return m_refHeight; }
+
+    // ── Camera ────────────────────────────────────────────────────────────────
+    // The active 2-D view transform used by SceneObject::WorldRect() helpers.
+    // Default camera has FlipY=true, zero offset, zoom=1 — renders Y-up world
+    // space mapped transparently to SDL's Y-down screen space.
+    // Camera is reset to its default state when a new scene is loaded.
+    void                  SetCamera(Camera2D Cam)     { m_camera = Cam; }
+    [[nodiscard]] const Camera2D& GetCamera() const   { return m_camera; }
+    void MoveCamera(float Dx, float Dy) { m_camera.WorldX += Dx; m_camera.WorldY += Dy; }
+
     void ResizeToTexture(SDL_Texture* Tex) const;
     std::expected<void, std::string> SetBackground(const char* VirtualPath);
     [[nodiscard]] SDL_Texture* Background() const { return m_bgTexture.get(); }
@@ -75,7 +89,7 @@ public:
 
     // ── AppLayer ──────────────────────────────────────────────────────────────
     void Update() override; // polls events, then calls Scene::Update()
-    void Tick(float deltaTime) override; // blits background texture, then calls Scene::Tick(deltaTime)
+    void Draw(float deltaTime) override; // blits background texture, then calls Scene::Draw(deltaTime)
 
     // ── IEventHandler ─────────────────────────────────────────────────────────
     // Forwards the event to the active scene's HandleEvent().
@@ -86,48 +100,29 @@ public:
     // Registers the "SDL" Lua table with the following functions:
     //   SDL.SetBackground(virtualPath: string)
     //   SDL.LoadScene(sceneName: string)
+    //   SDL.SetCamera(worldX: number, worldY: number)
+    //   SDL.MoveCamera(dx: number, dy: number)
     void RegisterObject(sol::state& Lua) override;
 
     // ── AppLayer ──────────────────────────────────────────────────────────────
     void RegisterWithServiceLocator() override;
-
-    // ── Collision debug registry ───────────────────────────────────────────────
-    // Register a BoxCollision* for debug rendering.  Returns a CollisionHandle
-    // that auto-deregisters on destruction — no manual cleanup required.
-    [[nodiscard]] CollisionHandle RegisterCollision(BoxCollision* Box, std::string Label = "");
-
-    // Access the registry directly (e.g. to iterate entries).
-    [[nodiscard]]       BoxCollisionRegistry& CollisionRegistry()       { return m_collisionRegistry; }
-    [[nodiscard]] const BoxCollisionRegistry& CollisionRegistry() const { return m_collisionRegistry; }
-
-    // Toggle the debug overlay that draws all registered collision boxes.
-    void ShowCollisionBoxes(bool Show) { m_showCollisionBoxes = Show; }
-    [[nodiscard]] bool IsShowingCollisionBoxes() const { return m_showCollisionBoxes; }
-
-    // Activate auto-registration: call once after SDLLayer reaches its final
-    // stable address (i.e. after pushLayer in UGEApplication::Create()).
-    // BoxCollision value constructors will register from this point forward.
-    void InitCollisionHooks();
 
 private:
     SDLLayer() = default;
     UniqueWindow   m_window;
     UniqueRenderer m_renderer;
     UniqueTexture  m_bgTexture{ nullptr };
-    bool           m_sdlInit = false;
-    bool           m_running = true;
+    bool           m_sdlInit  = false;
+    bool           m_running  = true;
+    int            m_refWidth  = 1600;
+    int            m_refHeight = 1200;
+    Camera2D       m_camera;
 
-    // Heap-allocated so its address is stable across moves (used as SDL log userdata)
     std::shared_ptr<std::function<void(std::string)>> m_logFn;
     std::function<void(SDL_Event&)>                   m_eventHandler;
 
-    // Active scene — destroyed before renderer/window in UnloadScene() / destructor.
     std::unique_ptr<SceneObject>     m_activeScene;
     std::optional<std::string> m_pendingScene;
 
-    // Perform the actual scene swap — called from Update() when m_pendingScene has a value.
     void loadSceneNow(const char* SceneName);
-
-    BoxCollisionRegistry m_collisionRegistry;
-    bool                 m_showCollisionBoxes = false;
 };

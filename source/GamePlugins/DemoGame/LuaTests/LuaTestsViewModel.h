@@ -30,8 +30,8 @@ private:
     std::string m_coinDirection = "1";   // bound to <select>; "1" = Right, "-1" = Left
     int         m_stateStop     = 0;
 
-    AppStateBinding m_coinXBinding;
-    AppStateBinding m_coinYBinding;
+    DataBinding m_coinXBinding;
+    DataBinding m_coinYBinding;
 
     uint32_t m_tickId = 0;
 

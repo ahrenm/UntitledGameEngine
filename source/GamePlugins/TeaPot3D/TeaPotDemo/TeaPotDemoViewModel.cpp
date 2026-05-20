@@ -9,7 +9,7 @@ void TeaPotDemoViewModel::RegisterWith(Rml::Context* Context, const char* ModelN
 
     // Seed the transient store with the default colour before the model is built.
     if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-        Data->Transient.Set(KEY_LIGHT_COLOR, AppStateValue{m_lightColor});
+        Data->Store.Set(KEY_LIGHT_COLOR, DataValue{m_lightColor});
 
     auto Ctor = Context->CreateDataModel(ModelName);
 
@@ -29,7 +29,7 @@ void TeaPotDemoViewModel::RegisterWith(Rml::Context* Context, const char* ModelN
             m_model.DirtyVariable("light_color");
 
             if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-                Data->Transient.Set(KEY_LIGHT_COLOR, AppStateValue{m_lightColor});
+                Data->Store.Set(KEY_LIGHT_COLOR, DataValue{m_lightColor});
         });
 
     // ── Navigation ───────────────────────────────────────────────────────────
@@ -45,14 +45,14 @@ void TeaPotDemoViewModel::RegisterWith(Rml::Context* Context, const char* ModelN
 
     // Subscribe so external writes to KEY_LIGHT_COLOR (e.g. from Lua console)
     // are reflected back in the bound variable.
-    m_lightColorBinding = APPSTATE_BIND_TRANSIENT(KEY_LIGHT_COLOR, m_lightColor,
-        [this](const std::string&, const AppStateValue& Val)
+    m_lightColorBinding = DATA_BIND(KEY_LIGHT_COLOR, m_lightColor,
+        [this](const Tag&, const DataValue& Val)
         {
-            if (const auto* S = std::get_if<std::string>(&Val))
+            if (const auto* S = Val.TryAs<std::string>())
             {
                 m_lightColor = *S;
                 m_model.DirtyVariable("light_color");
             }
-        });
+        }, Transient);
 }
 

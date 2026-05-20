@@ -26,7 +26,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
             m_stateStop = newValue;
             m_model.DirtyVariable("state_stop");
             if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-                Data->Transient.Set(KEY_STATE_STOP, AppStateValue{m_stateStop});
+                Data->Store.Set(KEY_STATE_STOP, DataValue{m_stateStop});
         });
 
     Ctor.BindEventCallback("onHardStop",
@@ -44,7 +44,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
             m_coinDirection = "1";
             m_model.DirtyVariable("coin_direction");
             if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-                Data->Transient.Set(KEY_COIN_DIRECTION, AppStateValue{1});
+                Data->Store.Set(KEY_COIN_DIRECTION, DataValue{1});
         });
 
     Ctor.BindEventCallback("onSelectLeft",
@@ -53,7 +53,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
             m_coinDirection = "-1";
             m_model.DirtyVariable("coin_direction");
             if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-                Data->Transient.Set(KEY_COIN_DIRECTION, AppStateValue{-1});
+                Data->Store.Set(KEY_COIN_DIRECTION, DataValue{-1});
         });
 
     Ctor.BindEventCallback("onStartTick",
@@ -73,7 +73,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
             m_tickId = Lua->AddTickFunction(std::move(Fn), "tickTest");
 
             if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-                Data->Transient.Set(KEY_STATE_STOP, AppStateValue{0});
+                Data->Store.Set(KEY_STATE_STOP, DataValue{0});
         });
 
     Ctor.BindEventCallback("onPrevious",
@@ -93,19 +93,19 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
     m_model = Ctor.GetModelHandle();
 
     // Bind transient state keys — set initial values then react to external changes.
-    m_coinXBinding = APPSTATE_BIND_TRANSIENT(KEY_COIN_X, m_coinLeft,
-        [this](const std::string&, const AppStateValue& Val)
+    m_coinXBinding = DATA_BIND(KEY_COIN_X, m_coinLeft,
+        [this](const Tag&, const DataValue& Val)
         {
-            if (const auto* F = std::get_if<float>(&Val))
+            if (const auto* F = Val.TryAs<float>())
                 SetCoinPosition(*F, m_coinTop);
-        });
+        }, Transient);
 
-    m_coinYBinding = APPSTATE_BIND_TRANSIENT(KEY_COIN_Y, m_coinTop,
-        [this](const std::string&, const AppStateValue& Val)
+    m_coinYBinding = DATA_BIND(KEY_COIN_Y, m_coinTop,
+        [this](const Tag&, const DataValue& Val)
         {
-            if (const auto* F = std::get_if<float>(&Val))
+            if (const auto* F = Val.TryAs<float>())
                 SetCoinPosition(m_coinLeft, *F);
-        });
+        }, Transient);
 }
 
 void LuaTestsViewModel::SetCoinPosition(float Left, float Top)
@@ -121,6 +121,6 @@ void LuaTestsViewModel::setStateStop(int Value)
     m_stateStop = Value;
     m_model.DirtyVariable("state_stop");
     if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-        Data->Transient.Set(KEY_STATE_STOP, AppStateValue{m_stateStop});
+        Data->Store.Set(KEY_STATE_STOP, DataValue{m_stateStop});
 }
 

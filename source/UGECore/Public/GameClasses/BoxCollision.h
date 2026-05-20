@@ -7,10 +7,21 @@
 // ── BoxCollision ──────────────────────────────────────────────────────────────
 // Axis-Aligned Bounding Box (AABB) for 2-D collision testing.
 //
-// All coordinates are in the caller's chosen reference space (e.g. the scene's
-// 1600 × 1200 reference-resolution pixels).
+// All coordinates are in Y-up world pixels (the engine's canonical world space).
+// (X, Y) is the BOTTOM-LEFT corner of the box; W and H extend right and upward.
+// This convention is direction-neutral for intersection math but aligns naturally
+// with Y-up physics bodies and Box2D.
 //
-// Layout:  (X, Y) is the top-left corner; W and H extend right and downward.
+// Edge accessors
+// --------------
+// Direction-neutral names (preferred in new code):
+//   MinX() / MaxX() — left / right edges
+//   MinY() / MaxY() — bottom / top edges in Y-up world space
+// Legacy screen-space names (kept for backward compatibility):
+//   Left() / Right() — synonyms for MinX() / MaxX()
+//   Top()   = MinY()  ← NOTE: "top" means the SMALLER Y value, i.e. bottom in world space
+//   Bottom()= MaxY()  ← NOTE: "bottom" means the LARGER Y value, i.e. top in world space
+// For collision logic prefer MinY()/MaxY() to avoid confusion.
 //
 // Auto-registration:
 //   BoxCollision objects constructed with the value constructor (X, Y, W, H [, Label])
@@ -104,10 +115,17 @@ struct BoxCollision
     [[nodiscard]] uint32_t RegistryId()   const { return m_registryId; }
 
     // ── Edge accessors ─────────────────────────────────────────────────────────
+    // Direction-neutral (preferred in Y-up world-space code):
+    [[nodiscard]] constexpr float MinX() const { return X; }
+    [[nodiscard]] constexpr float MaxX() const { return X + W; }
+    [[nodiscard]] constexpr float MinY() const { return Y; }       // bottom edge in Y-up
+    [[nodiscard]] constexpr float MaxY() const { return Y + H; }   // top edge in Y-up
+
+    // Legacy screen-space aliases (Top = MinY, Bottom = MaxY):
     [[nodiscard]] constexpr float Left()   const { return X; }
-    [[nodiscard]] constexpr float Top()    const { return Y; }
+    [[nodiscard]] constexpr float Top()    const { return Y; }     // == MinY()
     [[nodiscard]] constexpr float Right()  const { return X + W; }
-    [[nodiscard]] constexpr float Bottom() const { return Y + H; }
+    [[nodiscard]] constexpr float Bottom() const { return Y + H; } // == MaxY()
 
     [[nodiscard]] constexpr float CenterX() const { return X + W * 0.5f; }
     [[nodiscard]] constexpr float CenterY() const { return Y + H * 0.5f; }

@@ -11,34 +11,38 @@ add_library(UGECore SHARED
     Private/PhysFSFileInterface.cpp
     Private/Layers/AppLayer.cpp
         Private/Layers/UGEDataLayer.cpp
-        Private/Layers/DataStores/StoreBase.cpp
-        Private/Layers/DataStores/RuntimeStore.cpp
-        Private/Layers/DataStores/StoreSerializer.cpp
-        Private/Layers/DataStores/DatasetStore.cpp
+        Private/Layers/DataStores/DataValue.cpp
+        Private/Layers/DataStores/SubscriptionRegistry.cpp
+        Private/Layers/DataStores/DataStore.cpp
+        Private/Layers/DataStores/DataSerializer.cpp
+        Private/Layers/DataStores/DatasetLoader.cpp
     Private/Layers/LoggingLayer.cpp
     Private/Layers/LuaLayer.cpp
     Private/Layers/PhysFSLayer.cpp
     Private/Layers/SDLLayer.cpp
     Private/Layers/RmlUILayer.cpp
+    Private/Layers/PhysicsLayer.cpp
     Private/SceneRegistry.cpp
     Private/ViewModelRegistry.cpp
     Private/LayerRegistry.cpp
 
-    Public/Render3D/Camera3D.h
-    Public/Render3D/Light3D.h
-    Public/Render3D/Mesh3D.h
-
-    Private/Sprite/SpriteSheet.cpp
-    Private/Sprite/Sprite.cpp
     Public/Sprite/Sprite.h
     Public/Sprite/SpriteSheet.h
     Public/Sprite/AnimatedSprite.h
+    Private/Sprite/Sprite.cpp
+    Private/Sprite/SpriteSheet.cpp
+
+    Public/Animation/AnimationControllerBase.h
+    Private/Animation/AnimationControllerBase.cpp
         Public/toml.hpp
      Public/GameClasses/BoxCollision.h
      Public/GameClasses/BoxCollisionRegistry.h
      Private/BoxCollisionRegistry.cpp
-        Public/GameClasses/BoxCollisionGrid.h
-        Private/BoxCollisionGrid.cpp
+         Public/GameClasses/BoxCollisionGrid.h
+         Private/BoxCollisionGrid.cpp
+     Public/Camera2D.h
+     Public/Physics/PhysicsTypes.h
+     Public/Physics/PhysicsBodyHandle.h
 )
 
 # Strip the MinGW "lib" prefix so the output is UGECore.dll, not libUGECore.dll
@@ -55,7 +59,6 @@ target_include_directories(UGECore
         "${rmlui_SOURCE_DIR}/Backends"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-        "${tinyobjloader_SOURCE_DIR}"
 )
 
 target_compile_definitions(UGECore
@@ -81,14 +84,14 @@ target_link_libraries(UGECore
     PRIVATE
         RmlUi::Core
         RmlUi::Debugger
-        tinyobjloader          # PRIVATE: implementation detail; header only included in Render3DLayer.cpp
+        glm::glm               # PRIVATE: glm is no longer exposed via UGECore public headers
+        box2d                  # PRIVATE: Box2D types confined to PhysicsLayer.cpp via PIMPL
     PUBLIC
-        glm::glm               # PUBLIC: Camera3D.h / Light3D.h / Mesh3D.h expose glm types
         sol2::sol2
-        lua_static          # PUBLIC: sol2 public headers include lua.h directly
-        SDL3::SDL3          # PUBLIC so SDL3/SDL_main.h is visible in main.cpp
+        lua_static             # PUBLIC: sol2 public headers include lua.h directly
+        SDL3::SDL3             # PUBLIC so SDL3/SDL_main.h is visible in main.cpp
         SDL3_image::SDL3_image
-        physfs-static       # PUBLIC: PhysFSLayer.h includes physfs.h directly
+        physfs-static          # PUBLIC: PhysFSLayer.h includes physfs.h directly
 )
 
 

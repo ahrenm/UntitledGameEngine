@@ -111,6 +111,16 @@ set(RMLUI_TESTS_ENABLED   OFF CACHE BOOL "" FORCE)
 set(RMLUI_BACKEND "SDL_SDLrenderer" CACHE STRING "" FORCE)
 FetchContent_MakeAvailable(RmlUi)
 
+# Fetch Box2D 3.x — CPU physics and collision simulation (MIT licence)
+FetchContent_Declare(
+        box2d
+        GIT_REPOSITORY https://github.com/erincatto/box2d.git
+        GIT_TAG        v3.1.0
+)
+set(BOX2D_BUILD_TESTBED    OFF CACHE BOOL "" FORCE)
+set(BOX2D_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(box2d)
+
 # Copy RmlUi sample fonts into our assets folder at configure time
 file(COPY "${rmlui_SOURCE_DIR}/Samples/assets/"
      DESTINATION "${CMAKE_SOURCE_DIR}/assets/rmlui/")

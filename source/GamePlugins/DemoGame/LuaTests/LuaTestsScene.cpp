@@ -8,7 +8,7 @@ LuaTestsScene::LuaTestsScene(SDL_Renderer* Renderer, SDL_Window* Window)
 {
     // Initialise direction to Right (1) before the ViewModel is created.
     if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
-        Data->Transient.Set("luaTests.coinDirection", AppStateValue{1});
+        Data->Store.Set("luaTests.coinDirection", DataValue{1});
 
     GetSDLLayer()->SetBackground("assets/luaBG.jpg");
     if (auto* UI = GetUILayer())

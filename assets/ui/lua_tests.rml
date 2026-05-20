@@ -182,7 +182,7 @@
         </tr>
         <tr>
             <td class="col-notes">From platformer: play with physics<br/>LUA->Game State->Game c++</td>
-            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.SetTransient('plat2d.physics.gravity', 10)"/></td>
+            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.Set('plat2d.physics.gravity', 10)"/></td>
         </tr>
         <tr>
             <td class="col-notes">From platformer: Trigger game actions<br/>Lua->Game c++</td>
@@ -190,11 +190,11 @@
         </tr>
         <tr>
             <td class="col-notes">From platformer: Cheat your score<br/>Lua->Game State->UI</td>
-            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.SetTransient('plat2d.Score', 100)"/></td>
+            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.Set('plat2d.Score', 100)"/></td>
         </tr>
         <tr>
             <td class="col-notes">From platformer: Break the system?</td>
-            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.SetTransient('plat2d.Score', 'Not an integer')"/></td>
+            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.Set('plat2d.Score', 'Not an integer')"/></td>
         </tr>
     </table>
 
@@ -203,7 +203,7 @@
             <td class="col-notes">Misc Cmds</td>
         </tr>
         <tr>
-            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.ShowTransient()"/></td>
+            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.Show()"/></td>
         </tr>
         <tr>
             <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="UGE.ShowTicking()"/></td>

@@ -29,10 +29,20 @@ struct LaunchSettings
     std::string WindowTitle             = "Untitled Game Engine";
     int         WindowWidth             = 1600;
     int         WindowHeight            = 1200;
+    // Logical render reference resolution.  0 = inherit from WindowWidth/WindowHeight.
+    // SDL_SetRenderLogicalPresentation is configured with these values so all scene
+    // render calls work in reference pixels regardless of the actual window size.
+    int         RefWidth                = 0;
+    int         RefHeight               = 0;
+    // ── Physics defaults (used to seed physics.* transient tag branch) ────────
+    // PhysicsLayer reads these on startup and writes them to transient state.
+    // Scenes can override individual keys before calling InitPhysics().
+    float       PhysicsPixelsPerMeter   = 100.0f;  // world pixels per Box2D metre
+    float       PhysicsDefaultGravityX  = 0.0f;   // m/s²
+    float       PhysicsDefaultGravityY  = -9.81f; // m/s²  (negative = downward in Y-up)
     const char* ExecutablePath          = nullptr;  // argv[0] — required by PhysFSLayer
     std::string InitScript              = "assets/lua/initApp.lua"; // Executed at end of Create()
     std::vector<MountPoint> MountPoints;            // Virtual filesystem mount configuration
     std::vector<std::string> Modules;               // Platform-independent module names to load at startup
 };
-
 

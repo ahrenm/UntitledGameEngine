@@ -43,6 +43,6 @@ private:
     Rml::DataModelHandle m_model;
 
     int              m_score        = 0;
-    AppStateBinding  m_scoreBinding;  // transient subscription to "Platformer2d.Score"
+    DataBinding  m_scoreBinding;  // transient subscription to "Platformer2d.Score"
 };
 

@@ -25,12 +25,12 @@ public:
     ~TeaPotDemoScene() override;
 
     void Update()              override;
-    void Tick(float deltaTime) override;
+    void Draw(float deltaTime) override;
 
 private:
     float m_yaw = 0.0f;   // accumulated rotation around Y-axis (degrees)
 
-    AppStateBinding m_lightColorBinding;
+    DataBinding m_lightColorBinding;
 
     // Maps a colour name (from the UI dropdown) to RGB [0,1] values and
     // immediately applies it to Render3DLayer.

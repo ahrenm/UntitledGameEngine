@@ -5,6 +5,7 @@
 #include "../Layers/LuaLayer.h"
 #include "../Layers/SDLLayer.h"
 #include "../Layers/RmlUILayer.h"
+#include "../Layers/PhysicsLayer.h"
 #include "../ServiceLocator.h"
 
 // ── GameObjectBase ────────────────────────────────────────────────────────────
@@ -18,7 +19,8 @@
 //
 // Example (inside a Scene or ViewModel method):
 //   if (auto* Data = GetDataLayer())
-//       auto gravity = Data->Data.GetFloat("platformerData", "physics.gravity");
+//       if (const DataValue* V = Data->Store.Get("platformerData.physics.gravity"))
+//           float gravity = V->As<float>();
 class GameObjectBase
 {
 public:
@@ -31,5 +33,6 @@ protected:
     [[nodiscard]] static LuaLayer*       GetLuaLayer()       { return ServiceLocator::TryGet<LuaLayer>(); }
     [[nodiscard]] static SDLLayer*       GetSDLLayer()       { return ServiceLocator::TryGet<SDLLayer>(); }
     [[nodiscard]] static RmlUILayer*     GetUILayer()        { return ServiceLocator::TryGet<RmlUILayer>(); }
+    [[nodiscard]] static PhysicsLayer*   GetPhysicsLayer()   { return ServiceLocator::TryGet<PhysicsLayer>(); }
 };
 

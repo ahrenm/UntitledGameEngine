@@ -45,9 +45,9 @@ private:
     float m_anchorY = 0.0f;
 
     // ── Reactive bindings ─────────────────────────────────────────────────────
-    AppStateBinding m_nameBinding;
-    AppStateBinding m_posXBinding;
-    AppStateBinding m_posYBinding;
+    DataBinding m_nameBinding;
+    DataBinding m_posXBinding;
+    DataBinding m_posYBinding;
 
     Rml::DataModelHandle m_model;
 

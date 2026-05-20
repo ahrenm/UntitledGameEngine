@@ -1,106 +1,80 @@
 ﻿#pragma once
 #include <../../UGECore/Public/GameClasses/SceneObject.h>
-#include <GameClasses/BoxCollision.h>
+#include <Physics/PhysicsBodyHandle.h>
 #include <IScriptableObject.h>
-#include <Sprite/AnimatedSprite.h>
-#include <Sprite/SpriteSheet.h>
-#include <TileWorld.h>
-#include <optional>
-#include <vector>
+#include "CharacterAnimationController.h"
 
-class UGEDataLayer; // forward declaration — cached for per-frame transient writes
+class UGEDataLayer;
 
 // ── PlatformerCharacter ───────────────────────────────────────────────────────
-//
-// Owns all player-character state: input, physics, animation, rendering, and
-// tile collision.  PlatformerScene passes a non-owning reference to m_world at
-// construction; coin collection is handled by PlatformerScene via the grid.
-//
+// Owns the player's Box2D dynamic body, animation, and input handling.
+// Physics is fully driven by Box2D — no manual velocity integration.
+// Grounded state is maintained via AddGroundContact()/RemoveGroundContact()
+// called from PlatformerScene's contact callback.
 class PlatformerCharacter : public SceneObject, public IScriptableObject
 {
 public:
-    // ── Collision geometry (public so PlatformerScene can size tiles consistently)
     static constexpr float PLAYER_W           = 100.0f;
     static constexpr float PLAYER_H           = 100.0f;
     static constexpr float COLLISION_W        = PLAYER_W * 0.85f;
     static constexpr float COLLISION_X_OFFSET = (PLAYER_W - COLLISION_W) / 2.0f;
 
+    // DatasetKey = TOML dataset for sprite / animation config
     PlatformerCharacter(SDL_Renderer* Renderer, SDL_Window* Window,
-                        TileWorld& World, const char* DatasetKey);
+                        const char* DatasetKey);
 
     void Update()                      override;
-    void Tick(float DeltaTime)         override;
+    void Draw(float DeltaTime)         override;
     bool HandleEvent(SDL_Event& Event) override;
 
-    // ── ScriptableObject — exposes plat2d.Jump() to Lua ──────────────────────
     void Jump();
     void RegisterObject(sol::state& Lua)   override;
     void UnregisterObject(sol::state& Lua) override;
 
-    // Exposes the player's AABB so PlatformerScene can run grid queries against it.
-    [[nodiscard]] BoxCollision& CollisionBox() { return m_collisionBox; }
+    // ── Ground state (polled from Box2D contact manifolds each frame) ─────────
+    [[nodiscard]] bool       IsGrounded()      const { return m_body.IsGrounded(); }
+    // World-pixel bottom-left corner of the collision AABB (same coord as Box2D body origin).
+    [[nodiscard]] SDL_FPoint GetBodyPosition() const { return m_body.GetPosition(); }
 
-    // ── Configuration — called by PlatformerScene after loading DataLayer ─────
 private:
+    static constexpr float REF_W         = 1600.0f;
+    static constexpr float GROUND_TILE_H = 160.0f;   // top edge of the ground tile layer (px)
+    // Foot sensor is 10 px tall (0.05 m half-height × 2 × 100 PPM), centred flush with
+    // the body bottom.  Spawn 15 px above the tile top so the sensor clears the tile
+    // interior on the first frame and avoids a spurious grounded contact event.
+    static constexpr float SPAWN_Y       = GROUND_TILE_H + 50.0f;
 
-    // ── Reference resolution ──────────────────────────────────────────────────
-    static constexpr float REF_W    = 1600.0f;
-    static constexpr float REF_H    = 1200.0f;
-    static constexpr float GROUND_Y = REF_H - 160;
-    static constexpr float FRAME_DT = 1.0f / 30.0f;
+    UGEDataLayer* m_dataLayer = nullptr;
 
-    TileWorld& m_world;   // non-owning ref; owned by PlatformerScene
-    UGEDataLayer*      m_dataLayer = nullptr; // cached non-owning; for per-frame transient writes
-
-    // ── Character identity — bound to persistent AppState ────────────────────
+    // ── Character identity ────────────────────────────────────────────────────
     std::string     m_characterName;
-    AppStateBinding m_characterNameBinding;
+    DataBinding     m_characterNameBinding;
 
-    // ── Physics tunables — bound to transient AppState in constructor ─────────
-    float m_readGravity       = 0.0f;
-    float m_readSpeed         = 0.0f;
-    float m_readJumpHeight    = 0.0f;
-    float m_readGroundEpsilon = 0.0f;
+    // ── Physics tunables (bound to transient) ─────────────────────────────────
+    float m_readSpeed       = 240.0f;  // px/s  (TAG_SPEED)
+    float m_readJumpHeight  = 280.0f;  // px    (TAG_JUMP_HEIGHT)
+    float m_readGravityY    = -9.81f;  // m/s²  (TAG_PHYSICS_GRAVITY_Y)
+    float m_readPPM         = 100.0f;  // px/m  (TAG_PHYSICS_PPM)
 
-    AppStateBinding m_gravityBinding;
-    AppStateBinding m_speedBinding;
-    AppStateBinding m_jumpHeightBinding;
-    AppStateBinding m_groundEpsilonBinding;
+    DataBinding m_speedBinding;
+    DataBinding m_jumpHeightBinding;
+    DataBinding m_gravYBinding;
+    DataBinding m_ppmBinding;
 
-    // ── Sprites / animation ───────────────────────────────────────────────────
-    SpriteSheet    m_walkSheet;
-    AnimatedSprite m_walkAnim;
-    SpriteSheet    m_jumpSheet;
-    AnimatedSprite m_jumpAnim;
-    SpriteSheet    m_fallSheet;
-    AnimatedSprite m_fallAnim;
+    // ── Box2D body ────────────────────────────────────────────────────────────
+    PhysicsBodyHandle m_body;          // owns the dynamic body (destroyed with scene)
 
-    bool  m_facingLeft    = false;
-    float m_playerRenderW = PLAYER_W;
-    float m_playerRenderH = PLAYER_H;
+    // ── Render position (read from body each tick) ────────────────────────────
+    float m_playerX = (REF_W - PLAYER_W) / 2.0f;  // sprite left edge
+    float m_playerY = SPAWN_Y;                      // sprite bottom edge (Y-up)
 
-    // ── Physics / position state ──────────────────────────────────────────────
-    float m_playerX   = (REF_W - PLAYER_W) / 2.0f;
-    float m_playerY   = GROUND_Y - PLAYER_H;
-    float m_velocityY = 0.0f;
-    bool  m_isJumping = false;
+    // ── Animation controller ──────────────────────────────────────────────────
+    CharacterAnimationController m_animController;
 
-    // ── Collision box ─────────────────────────────────────────────────────────
-    BoxCollision m_collisionBox;
+    bool m_facingLeft = false;
 
     // ── Input flags ───────────────────────────────────────────────────────────
     bool m_moveLeft    = false;
     bool m_moveRight   = false;
     bool m_jumpPressed = false;
-
-    // ── Tile collision helpers ────────────────────────────────────────────────
-    [[nodiscard]] std::optional<float> snapVertical(float ColL, float ColR,
-                                                    float CandidateY,
-                                                    bool FallingDown) const;
-
-    void buildAnimatedSprite(const char*         DatasetKey,
-                              const std::string&  SectionPrefix,
-                              SpriteSheet&        OutSheet,
-                              AnimatedSprite&     OutAnim);
-
 };

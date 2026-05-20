@@ -96,7 +96,7 @@ protected:
     // Writes a single value to the transient store under m_runtimePrefix + Suffix.
     // The corresponding binding callback then updates the local member and calls
     // OnRuntimeStateChanged() — callers must NOT assign the member directly.
-    void setTransient(const char* Suffix, AppStateValue Value);
+    void setTransient(const char* Suffix, DataValue Value);
 
     // Optional hook called whenever runtime state (position, z-order, visibility) changes.
     // Derived classes should override to dirty relevant RmlUi model variables.
@@ -125,10 +125,10 @@ private:
 
     // One binding per transient-backed property.
     // Callbacks call OnRuntimeStateChanged() so derived classes dirty their model vars.
-    AppStateBinding m_posXBinding;
-    AppStateBinding m_posYBinding;
-    AppStateBinding m_zBinding;
-    AppStateBinding m_visibleBinding;
+    DataBinding m_posXBinding;
+    DataBinding m_posYBinding;
+    DataBinding m_zBinding;
+    DataBinding m_visibleBinding;
 
 protected:
     struct DragState {

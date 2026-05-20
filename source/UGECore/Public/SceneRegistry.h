@@ -41,7 +41,7 @@ private:
 //   public:
 //       REGISTER_SCENE("my-scene", MyScene)
 //       MyScene(SDL_Renderer* R, SDL_Window* W) : Scene(R, W) {}
-//       void Tick(float DeltaTime) override;
+//       void Draw(float DeltaTime) override;
 //   };
 #define REGISTER_SCENE(SceneName, Type)                                          \
     struct _SceneRegistrar {                                                      \

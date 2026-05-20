@@ -10,6 +10,8 @@ add_library(DemoGame SHARED
     Platformer/PlatformerNamePlateViewModel.h
     Platformer/PlatformerNamePlateViewModel.cpp
     Platformer/PlatformerCharacter.cpp
+    Platformer/CharacterAnimationController.h
+    Platformer/CharacterAnimationController.cpp
     Platformer/TileWorld.h
     Platformer/TileWorld.cpp
     Platformer/PlatformerScene.cpp
@@ -18,6 +20,7 @@ add_library(DemoGame SHARED
     LuaTests/LuaTestsScene.cpp
     LuaTests/LuaTestsViewModel.h
     LuaTests/LuaTestsViewModel.cpp
+    StateAssetsDemo/StateAssetsDemoKeys.h
     StateAssetsDemo/StateAssetsDemoScene.h
     StateAssetsDemo/StateAssetsDemoScene.cpp
     StateAssetsDemo/StateAssetsDemoViewModel.h

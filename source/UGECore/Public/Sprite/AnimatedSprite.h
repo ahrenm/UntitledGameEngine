@@ -13,7 +13,7 @@
 // Timing is expressed in seconds so playback speed is frame-rate-independent.
 // At the engine's 30 FPS fixed step, pass DeltaSeconds = 1.0f / 30.0f each tick.
 //
-// Typical usage inside a Scene:
+// Typical usage inside a Scene's Tick():
 //
 //   // Construction (member initialiser)
 //   m_walkAnim = AnimatedSprite{ &m_playerSheet,
@@ -21,11 +21,9 @@
 //                                /*FrameCount=*/  4,
 //                                /*FrameDuration=*/0.12f };
 //
-//   // Update (once per frame, before Tick)
-//   m_walkAnim.Update(1.0f / 30.0f);
-//
-//   // Tick (render pass)
+//   // Tick (render pass — advance then draw)
 //   SDL_FRect Dest{ ... };
+//   m_walkAnim.Tick(DeltaTime);
 //   m_walkAnim.Draw(m_renderer, Dest);
 struct AnimatedSprite
 {
@@ -35,8 +33,8 @@ struct AnimatedSprite
     float              FrameDuration = 0.1f;     // seconds per frame
 
     // ── Advance the animation by DeltaSeconds. ────────────────────────────────
-    // Call once per Update() pass.
-    void Update(float DeltaSeconds)
+    // Call once per frame, before Draw().
+    void Tick(float DeltaSeconds)
     {
         if (!Sheet || FrameCount <= 1) return;
 

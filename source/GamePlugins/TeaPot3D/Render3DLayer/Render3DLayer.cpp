@@ -4,7 +4,7 @@
 
 #include <Render3DLayer/Render3DLayer.h>
 #include <Layers/SDLLayer.h>
-#include <Render3D/Mesh3D.h>
+#include "Mesh3D.h"
 #include <Layers/PhysFSLayer.h>
 #include <ServiceLocator.h>
 
@@ -187,8 +187,8 @@ void Render3DLayer::Update()
     loadModelNow(path);
 }
 
-// ── AppLayer::Tick ────────────────────────────────────────────────────────────
-void Render3DLayer::Tick(float /*deltaTime*/)
+// ── AppLayer::Draw ────────────────────────────────────────────────────────────
+void Render3DLayer::Draw(float /*deltaTime*/)
 {
     if (!m_active) return;
     if (!m_mesh || m_mesh->Triangles.empty()) return;

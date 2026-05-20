@@ -84,7 +84,7 @@ public:
 
     // ── AppLayer ──────────────────────────────────────────────────────────────
     void Update() override;
-    void Tick(float deltaTime) override;
+    void Draw(float deltaTime) override;
 
     // ── IEventHandler ─────────────────────────────────────────────────────────
     // Dispatches to ViewModels in reverse order, then forwards to RmlUi.

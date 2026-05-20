@@ -1,11 +1,10 @@
-﻿#pragma once
+#pragma once
 #include "AppLayer.h"
 #include "../ServiceLocator.h"
 #include "../IScriptableObject.h"
 #include "../LayerRegistry.h"
-#include "DataStores/RuntimeStore.h"
-#include "DataStores/StoreSerializer.h"
-#include "DataStores/DatasetStore.h"
+#include "DataStores/DataStore.h"
+#include "DataStores/DataSerializer.h"
 
 #include <expected>
 #include <memory>
@@ -14,20 +13,22 @@
 #include <vector>
 
 // ── UGEDataLayer ──────────────────────────────────────────────────────────────
-// Central data layer hosting three public store objects:
+// Central data layer hosting a single unified DataStore.  Every entry carries its
+// own DataMeta describing persistence policy and provenance, replacing the old
+// three-store split (State / Transient / Data):
 //
-//   State     — persistent key-value store (survives sessions; serialised)
-//   Transient — runtime-only key-value store (never serialised; items may be removed)
-//   Data      — read-only TOML dataset store (assets/DATA/**/*.toml)
+//   - Persistent entries   → meta { Serialize = true,  Source = Serialized }
+//   - Transient entries    → default meta (never serialised, runtime-only)
+//   - Dataset entries       → meta { Source = TomlDataset } (loaded from assets/DATA/)
 //
-// Access any store directly, e.g.:
+// Access the store directly, e.g.:
 //   auto& layer = ServiceLocator::Get<UGEDataLayer>();
-//   layer.State.Set("ui.visible", 1);
-//   layer.Transient.Set("game.score", 0);
-//   auto gravity = layer.Data.GetFloat("platformerData", "physics.gravity");
+//   layer.Store.Set("ui.visible", DataValue{1});
+//   auto gravity = layer.Store.Get("platformerData.physics.gravity")->As<float>();
+//   for (const auto& Row : layer.Store.RowsView("platformerMap.tiles")) { ... }
 //
-// Use APPSTATE_BIND / APPSTATE_BIND_TRANSIENT for reactive bindings.
-// Use SubscribePrefix for cross-store prefix watching.
+// Use DATA_BIND / DATA_BIND_LOCAL_FLOAT / DATA_BIND_LOCAL_STRING for reactive
+// bindings; use Store.SubscribePrefix for prefix watching.
 //
 // Load order: 3 — must follow PhysFSLayer (2) as Create() scans assets/DATA/ via PhysFS.
 class UGEDataLayer : public AppLayer, public IScriptableObject
@@ -37,36 +38,42 @@ public:
 
     // ── Factory ───────────────────────────────────────────────────────────────
     // Creates the layer and immediately scans assets/DATA/ via PhysFSLayer,
-    // loading all *.toml files into Data.  PhysFSLayer must be registered with
+    // loading all *.toml files into Store.  PhysFSLayer must be registered with
     // the ServiceLocator before calling Create().
     [[nodiscard]] static std::expected<std::unique_ptr<UGEDataLayer>, std::string> Create();
 
-    // ── Public store objects ──────────────────────────────────────────────────
-    RuntimeStore State;      // persistent key-value store  (serialised via SaveState/LoadState)
-    RuntimeStore Transient;  // runtime-only key-value store (never serialised)
-    DatasetStore    Data;       // read-only TOML dataset store
+    // ── Public store ──────────────────────────────────────────────────────────
+    DataStore Store;
 
     // ── Cross-store prefix subscription ───────────────────────────────────────
-    // Fires Cb for every key starting with Prefix across both State and Transient.
-    // e.g. SubscribePrefix("ui.", cb) watches "ui.console.visible" in both stores.
-    using SubscriptionToken = StoreReadOnly::SubscriptionToken;
-    using ChangeCallback    = StoreReadOnly::ChangeCallback;
+    // Fires Cb for every key starting with Prefix.  Delegates to Store.
+    // e.g. SubscribePrefix("ui.", cb) watches every "ui.*" key.
+    using SubscriptionToken = DataStore::SubscriptionToken;
+    using ChangeCallback    = DataStore::ChangeCallback;
 
     [[nodiscard]] SubscriptionToken SubscribePrefix(const std::string& Prefix, ChangeCallback Cb);
     void UnsubscribePrefix(SubscriptionToken Token);
 
     // ── Serialisation ─────────────────────────────────────────────────────────
-    // Persist State to / restore State from a TOML file at a real OS path.
-    // Dot-notation keys are written as a nested TOML hierarchy.
+    // Persist / restore every entry whose Meta.Serialize == true to a TOML file
+    // at a real OS path.  Dot-notation keys are written as a nested TOML hierarchy.
     // Returns false and logs on I/O or parse failure.
-    [[nodiscard]] bool SaveState(const char* FilePath);
-    [[nodiscard]] bool LoadState(const char* FilePath);
+    [[nodiscard]] bool Save(const char* FilePath);
+    [[nodiscard]] bool Load(const char* FilePath);
+
+    // ── Deferred write-queue (threading seam, §8) ─────────────────────────────
+    // Set / Remove requests from non-owner contexts enqueue a command that is
+    // applied on the main thread when Update() drains the queue at the frame
+    // sync point.  Direct Store.Set/Remove remain available for main-thread use.
+    void QueueSet(Tag Key, DataValue Val, DataMeta Meta = {});
+    void QueueRemove(Tag Key);
 
     // ── IScriptableObject ─────────────────────────────────────────────────────
-    // Exposes Data.SetTransient(key, value) and Data.GetTransient(key) to Lua.
+    // Exposes Data.Set(key, value), Data.Get(key) and Data.Show() to Lua.
     void RegisterObject(sol::state& Lua) override;
 
     // ── AppLayer ──────────────────────────────────────────────────────────────
+    void Update() override;                 // drains the deferred write-queue
     void RegisterWithServiceLocator() override;
 
     ~UGEDataLayer() override;
@@ -74,49 +81,48 @@ public:
 private:
     UGEDataLayer();
 
-    struct PrefixSubscription
+    struct QueuedWrite
     {
-        std::string       prefix;
-        ChangeCallback    callback;
-        SubscriptionToken token = 0;
+        Tag       key;
+        DataValue value;
+        DataMeta  meta;
+        bool      remove = false;
     };
 
-    std::vector<PrefixSubscription> m_prefixSubs;
-    SubscriptionToken               m_nextPrefixToken = 1;
-    StoreSerializer       m_serializer;
+    std::vector<QueuedWrite> m_writeQueue;
+    DataSerializer           m_serializer;
 };
 
 
-// ── AppStateBinding ───────────────────────────────────────────────────────────
-// RAII handle returned by APPSTATE_BIND / APPSTATE_BIND_TRANSIENT.
+// ── DataBinding ───────────────────────────────────────────────────────────────
+// RAII handle returned by DATA_BIND / DATA_BIND_LOCAL_*.
 // Automatically calls Unsubscribe() when destroyed or move-assigned.
 // Always store as a member variable — never as a local variable.
 //
 // API:
-//   binding.SetValue(AppStateValue{...})  — write a new value (fires subscribers)
-//   binding.GetValue()                    — read the current value (const Value*)
-//   binding.Release()                     — unsubscribe early
-//   binding.IsActive()                    — true if still subscribed
-class AppStateBinding
+//   binding.SetValue(DataValue{...})  — write a new value (fires subscribers)
+//   binding.GetValue()                — read the current value (const DataValue*)
+//   binding.Release()                 — unsubscribe early
+//   binding.IsActive()                — true if still subscribed
+class DataBinding
 {
 public:
-    AppStateBinding() = default;
+    DataBinding() = default;
 
-    AppStateBinding(StoreReadWrite* Store, StoreReadOnly::SubscriptionToken Token,
-                    std::string Key)
+    DataBinding(DataStore* Store, DataStore::SubscriptionToken Token, std::string Key)
         : m_store(Store), m_token(Token), m_key(std::move(Key)) {}
 
-    ~AppStateBinding() { release(); }
+    ~DataBinding() { release(); }
 
-    AppStateBinding(const AppStateBinding&)            = delete;
-    AppStateBinding& operator=(const AppStateBinding&) = delete;
+    DataBinding(const DataBinding&)            = delete;
+    DataBinding& operator=(const DataBinding&) = delete;
 
-    AppStateBinding(AppStateBinding&& Other) noexcept
+    DataBinding(DataBinding&& Other) noexcept
         : m_store(std::exchange(Other.m_store, nullptr))
         , m_token(std::exchange(Other.m_token, 0))
         , m_key(std::move(Other.m_key)) {}
 
-    AppStateBinding& operator=(AppStateBinding&& Other) noexcept
+    DataBinding& operator=(DataBinding&& Other) noexcept
     {
         if (this != &Other)
         {
@@ -133,17 +139,21 @@ public:
 
     [[nodiscard]] bool IsActive() const { return m_store != nullptr && m_token != 0; }
 
-    // Write a new value into the bound key's store, firing all subscribers.
-    // No-op if the binding is inactive or has no key.
-    void SetValue(AppStateValue Val)
+    // Write a new value into the bound key, firing all subscribers.
+    // Preserves the existing entry's meta if the key is present, otherwise uses
+    // default (transient) meta.  No-op if the binding is inactive or has no key.
+    void SetValue(DataValue Val)
     {
         if (!m_store || m_key.empty()) return;
-        m_store->Set(m_key, std::move(Val));
+        DataMeta Meta;
+        if (const DataEntry* Existing = m_store->Find(m_key))
+            Meta = Existing->Meta;
+        m_store->Set(m_key, std::move(Val), std::move(Meta));
     }
 
-    // Read the current value from the bound key's store.
+    // Read the current value from the bound key.
     // Returns nullptr if the binding is inactive, has no key, or the key is absent.
-    [[nodiscard]] const AppStateValue* GetValue() const
+    [[nodiscard]] const DataValue* GetValue() const
     {
         if (!m_store || m_key.empty()) return nullptr;
         return m_store->Get(m_key);
@@ -161,136 +171,122 @@ private:
         m_token = 0;
     }
 
-    StoreReadWrite*                  m_store = nullptr;
-    StoreReadOnly::SubscriptionToken m_token = 0;
-    std::string                      m_key;
+    DataStore*                   m_store = nullptr;
+    DataStore::SubscriptionToken m_token = 0;
+    std::string                  m_key;
 };
 
 
-// ── APPSTATE_BIND ─────────────────────────────────────────────────────────────
-// Targets UGEDataLayer::State (persistent store).
-// Injects Key_ with InitialValue_ if absent, subscribes Callback_, and returns
-// an AppStateBinding that auto-unsubscribes on destruction.
+// ── DATA_BIND target selectors ────────────────────────────────────────────────
+// The optional trailing Target argument of the DATA_BIND* macros expands to one
+// of these helpers.  Persistent (default) tags entries for serialisation;
+// Transient leaves default (runtime-only) meta.
+namespace DataBindTarget
+{
+    inline DataMeta Persistent() { return DataMeta{ .Serialize = true, .Source = DataSource::Serialized }; }
+    inline DataMeta Transient()  { return DataMeta{}; }
+}
+
+
+// ── DATA_BIND ─────────────────────────────────────────────────────────────────
+// Injects Key_ with InitialValue_ if absent (using the Target_ meta), subscribes
+// Callback_, and returns a DataBinding that auto-unsubscribes on destruction.
 //
-// Callback_ signature: void(const std::string& Key, const AppStateValue& Val)
+// Callback_ signature: void(const Tag& Key, const DataValue& Val)
+//
+// Target_ (optional, defaults to Persistent) selects the seed meta:
+//   Persistent — { Serialize = true, Source = Serialized }
+//   Transient  — default meta (runtime-only)
 //
 // Example:
-//   AppStateBinding m_binding = APPSTATE_BIND(
+//   DataBinding m_binding = DATA_BIND(
 //       "ui.console.visible", 1,
-//       [this](const std::string&, const AppStateValue& Val) {
-//           m_visible = std::get<int>(Val) != 0;
+//       [this](const Tag&, const DataValue& Val) {
+//           m_visible = Val.As<int>() != 0;
 //           m_model.DirtyVariable("panel_visible");
 //       });
+//   DataBinding m_dragBinding = DATA_BIND(
+//       "ui.console.dragging", 0, cb, Transient);
 //
-// Returns an empty (no-op) AppStateBinding if UGEDataLayer is not yet registered.
-#define APPSTATE_BIND(Key_, InitialValue_, Callback_)                              \
-    [&]() -> AppStateBinding {                                                     \
-        auto* _Layer = ServiceLocator::TryGet<UGEDataLayer>();                    \
+// Returns an empty (no-op) DataBinding if UGEDataLayer is not yet registered.
+#define DATA_BIND_IMPL(Key_, InitialValue_, Callback_, Target_)                    \
+    [&]() -> DataBinding {                                                         \
+        auto* _Layer = ServiceLocator::TryGet<UGEDataLayer>();                     \
         if (!_Layer) return {};                                                    \
-        auto& _S = _Layer->State;                                                  \
-        if (!_S.Has(Key_)) _S.Set((Key_), AppStateValue{InitialValue_});           \
-        return AppStateBinding(&_S, _S.Subscribe((Key_), (Callback_)), (Key_));   \
+        auto& _S = _Layer->Store;                                                  \
+        if (!_S.Has(Key_))                                                         \
+            _S.Set((Key_), DataValue{InitialValue_}, DataBindTarget::Target_());   \
+        return DataBinding(&_S, _S.Subscribe((Key_), (Callback_)), std::string(Key_));        \
     }()
 
-// ── APPSTATE_BIND_TRANSIENT ───────────────────────────────────────────────────
-// Like APPSTATE_BIND but targets UGEDataLayer::Transient (runtime-only store).
-//
-// Example:
-//   AppStateBinding m_dragBinding = APPSTATE_BIND_TRANSIENT(
-//       "ui.console.dragging", 0,
-//       [this](const std::string&, const AppStateValue& Val) {
-//           m_dragging = std::get<int>(Val) != 0;
-//       });
-#define APPSTATE_BIND_TRANSIENT(Key_, InitialValue_, Callback_)                    \
-    [&]() -> AppStateBinding {                                                     \
-        auto* _Layer = ServiceLocator::TryGet<UGEDataLayer>();                    \
-        if (!_Layer) return {};                                                    \
-        auto& _S = _Layer->Transient;                                              \
-        if (!_S.Has(Key_)) _S.Set((Key_), AppStateValue{InitialValue_});           \
-        return AppStateBinding(&_S, _S.Subscribe((Key_), (Callback_)), (Key_));   \
-    }()
+// Overload-by-arg-count: allow an optional trailing Target argument.
+#define DATA_BIND_GET(_1, _2, _3, _4, NAME, ...) NAME
+#define DATA_BIND(...) \
+    DATA_BIND_GET(__VA_ARGS__, DATA_BIND_4, DATA_BIND_3)(__VA_ARGS__)
+#define DATA_BIND_3(Key_, InitialValue_, Callback_) \
+    DATA_BIND_IMPL(Key_, InitialValue_, Callback_, Persistent)
+#define DATA_BIND_4(Key_, InitialValue_, Callback_, Target_) \
+    DATA_BIND_IMPL(Key_, InitialValue_, Callback_, Target_)
 
-// ── APPSTATE_BIND_TRANSIENT_LOCAL_FLOAT ───────────────────────────────────────
-// Convenience wrapper for the common pattern of binding a transient float key
-// directly to a local float variable: subscribes, then seeds the variable from
-// the current stored value so it is immediately valid without a SetValue call.
+
+// ── DATA_BIND_LOCAL_FLOAT ─────────────────────────────────────────────────────
+// Binds a float key directly to a local float member: subscribes, then seeds
+// Member_ from the current stored value immediately so it is valid without a
+// SetValue call.
 //
-// Binding_ : AppStateBinding lvalue to assign into
-// Key_     : std::string_view or const char* tag (e.g. TAG_GRAVITY)
+// Binding_ : DataBinding lvalue to assign into
+// Key_     : std::string_view / const char* / std::string tag
 // Member_  : float lvalue to keep in sync
+// Target_  : optional (Persistent default / Transient)
 //
 // Example:
-//   APPSTATE_BIND_TRANSIENT_LOCAL_FLOAT(m_gravityBinding, TAG_GRAVITY, m_gravity);
-#define APPSTATE_BIND_TRANSIENT_LOCAL_FLOAT(Binding_, Key_, Member_)               \
+//   DATA_BIND_LOCAL_FLOAT(m_gravityBinding, TAG_GRAVITY, m_gravity, Transient);
+#define DATA_BIND_LOCAL_FLOAT_IMPL(Binding_, Key_, Member_, Target_)               \
     do {                                                                            \
-        (Binding_) = APPSTATE_BIND_TRANSIENT((Key_).data(), 0.0f,                 \
-            [&](const std::string&, const AppStateValue& lfVal)                   \
+        (Binding_) = DATA_BIND_IMPL((Key_), 0.0f,                                  \
+            [&](const Tag&, const DataValue& lfVal)                               \
             {                                                                       \
-                if (const auto* lfF = std::get_if<float>(&lfVal)) (Member_) = *lfF; \
-            });                                                                     \
-        if (const auto* lfV = (Binding_).GetValue())                              \
-            if (const auto* lfF = std::get_if<float>(lfV)) (Member_) = *lfF;     \
+                if (const float* lfF = lfVal.TryAs<float>()) (Member_) = *lfF;     \
+            }, Target_);                                                            \
+        if (const DataValue* lfV = (Binding_).GetValue())                         \
+            if (const float* lfF = lfV->TryAs<float>()) (Member_) = *lfF;          \
     } while(0)
 
-// ── APPSTATE_BIND_LOCAL_FLOAT ─────────────────────────────────────────────────
-// Persistent-store equivalent of APPSTATE_BIND_TRANSIENT_LOCAL_FLOAT.
-// Binds a persistent State key directly to a local float member: subscribes,
-// then seeds Member_ from the current stored value immediately.
-//
-// Binding_ : AppStateBinding lvalue to assign into
-// Key_     : std::string_view or const char* tag
-// Member_  : float lvalue to keep in sync
-//
-// Example:
-//   APPSTATE_BIND_LOCAL_FLOAT(m_volumeBinding, "audio.volume", m_volume);
-#define APPSTATE_BIND_LOCAL_FLOAT(Binding_, Key_, Member_)                         \
-    do {                                                                            \
-        (Binding_) = APPSTATE_BIND((Key_), 0.0f,                                  \
-            [&](const std::string&, const AppStateValue& lfVal)                   \
-            {                                                                       \
-                if (const auto* lfF = std::get_if<float>(&lfVal)) (Member_) = *lfF; \
-            });                                                                     \
-        if (const auto* lfV = (Binding_).GetValue())                              \
-            if (const auto* lfF = std::get_if<float>(lfV)) (Member_) = *lfF;     \
-    } while(0)
+#define DATA_BIND_LOCAL_FLOAT_GET(_1, _2, _3, _4, NAME, ...) NAME
+#define DATA_BIND_LOCAL_FLOAT(...) \
+    DATA_BIND_LOCAL_FLOAT_GET(__VA_ARGS__, DATA_BIND_LOCAL_FLOAT_4, DATA_BIND_LOCAL_FLOAT_3)(__VA_ARGS__)
+#define DATA_BIND_LOCAL_FLOAT_3(Binding_, Key_, Member_) \
+    DATA_BIND_LOCAL_FLOAT_IMPL(Binding_, Key_, Member_, Persistent)
+#define DATA_BIND_LOCAL_FLOAT_4(Binding_, Key_, Member_, Target_) \
+    DATA_BIND_LOCAL_FLOAT_IMPL(Binding_, Key_, Member_, Target_)
 
-// ── APPSTATE_BIND_LOCAL_STRING ────────────────────────────────────────────────
-// Binds a persistent State string key directly to a local std::string member.
-// Subscribes and seeds Member_ from the current stored value immediately.
+
+// ── DATA_BIND_LOCAL_STRING ────────────────────────────────────────────────────
+// Binds a string key directly to a local std::string member: subscribes, then
+// seeds Member_ from the current stored value immediately.
 //
-// Binding_ : AppStateBinding lvalue to assign into
-// Key_     : const char* or std::string tag
+// Binding_ : DataBinding lvalue to assign into
+// Key_     : const char* / std::string tag
 // Member_  : std::string lvalue to keep in sync
+// Target_  : optional (Persistent default / Transient)
 //
 // Example:
-//   APPSTATE_BIND_LOCAL_STRING(m_nameBinding, "character.name", m_name);
-#define APPSTATE_BIND_LOCAL_STRING(Binding_, Key_, Member_)                        \
+//   DATA_BIND_LOCAL_STRING(m_labelBinding, "ui.label", m_label, Transient);
+#define DATA_BIND_LOCAL_STRING_IMPL(Binding_, Key_, Member_, Target_)              \
     do {                                                                            \
-        (Binding_) = APPSTATE_BIND((Key_), std::string{},                          \
-            [&](const std::string&, const AppStateValue& lsVal)                   \
+        (Binding_) = DATA_BIND_IMPL((Key_), std::string{},                        \
+            [&](const Tag&, const DataValue& lsVal)                               \
             {                                                                       \
-                if (const auto* lsS = std::get_if<std::string>(&lsVal)) (Member_) = *lsS; \
-            });                                                                     \
-        if (const auto* lsV = (Binding_).GetValue())                              \
-            if (const auto* lsS = std::get_if<std::string>(lsV)) (Member_) = *lsS; \
+                if (const std::string* lsS = lsVal.TryAs<std::string>()) (Member_) = *lsS; \
+            }, Target_);                                                            \
+        if (const DataValue* lsV = (Binding_).GetValue())                         \
+            if (const std::string* lsS = lsV->TryAs<std::string>()) (Member_) = *lsS; \
     } while(0)
 
-// ── APPSTATE_BIND_TRANSIENT_LOCAL_STRING ──────────────────────────────────────
-// Transient-store equivalent of APPSTATE_BIND_LOCAL_STRING.
-// Binds a runtime-only Transient string key directly to a local std::string member.
-//
-// Example:
-//   APPSTATE_BIND_TRANSIENT_LOCAL_STRING(m_labelBinding, "ui.label", m_label);
-#define APPSTATE_BIND_TRANSIENT_LOCAL_STRING(Binding_, Key_, Member_)              \
-    do {                                                                            \
-        (Binding_) = APPSTATE_BIND_TRANSIENT((Key_), std::string{},                \
-            [&](const std::string&, const AppStateValue& lsVal)                   \
-            {                                                                       \
-                if (const auto* lsS = std::get_if<std::string>(&lsVal)) (Member_) = *lsS; \
-            });                                                                     \
-        if (const auto* lsV = (Binding_).GetValue())                              \
-            if (const auto* lsS = std::get_if<std::string>(lsV)) (Member_) = *lsS; \
-    } while(0)
-
-
-
+#define DATA_BIND_LOCAL_STRING_GET(_1, _2, _3, _4, NAME, ...) NAME
+#define DATA_BIND_LOCAL_STRING(...) \
+    DATA_BIND_LOCAL_STRING_GET(__VA_ARGS__, DATA_BIND_LOCAL_STRING_4, DATA_BIND_LOCAL_STRING_3)(__VA_ARGS__)
+#define DATA_BIND_LOCAL_STRING_3(Binding_, Key_, Member_) \
+    DATA_BIND_LOCAL_STRING_IMPL(Binding_, Key_, Member_, Persistent)
+#define DATA_BIND_LOCAL_STRING_4(Binding_, Key_, Member_, Target_) \
+    DATA_BIND_LOCAL_STRING_IMPL(Binding_, Key_, Member_, Target_)

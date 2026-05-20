@@ -9,5 +9,5 @@ UI.LoadFont("assets/rmlui/LatoLatin-Italic.ttf")
 
 SDL.LoadScene("platformer")
 --SDL.LoadScene("lua-tests")
-
+--Physics.ShowCollision()
 

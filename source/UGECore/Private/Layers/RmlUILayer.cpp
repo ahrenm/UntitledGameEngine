@@ -223,10 +223,10 @@ void RmlUILayer::loadDocumentNow(const std::string& VirtualPath)
     m_activeDocumentSlug = NormalizeDocumentSlug(VirtualPath);
     if (DataLayer && !m_activeDocumentSlug.empty())
     {
-        DataLayer->Transient.Set("uiRuntime.activeDoc", AppStateValue{m_activeDocumentSlug});
+        DataLayer->Store.Set("uiRuntime.activeDoc", DataValue{m_activeDocumentSlug});
         const std::string CurrentMaxKey = "uiRuntime." + m_activeDocumentSlug + ".currentWinZMax";
-        if (!DataLayer->Transient.Has(CurrentMaxKey))
-            DataLayer->Transient.Set(CurrentMaxKey, AppStateValue{0});
+        if (!DataLayer->Store.Has(CurrentMaxKey))
+            DataLayer->Store.Set(CurrentMaxKey, DataValue{0});
     }
 
 
@@ -270,7 +270,7 @@ void RmlUILayer::BeginFrame()
 {
     // RenderInterface_SDL::BeginFrame() resets the viewport and blend mode but
     // also calls SDL_RenderClear, which would wipe the background already drawn
-    // by SDLLayer::Tick().  We replicate only the two state-setup calls here.
+    // by SDLLayer::Draw().  We replicate only the two state-setup calls here.
     SDL_SetRenderViewport(SDL_GetRenderer(m_window), nullptr);
     SDL_SetRenderDrawBlendMode(SDL_GetRenderer(m_window), SDL_BLENDMODE_BLEND);
 }
@@ -327,7 +327,7 @@ void RmlUILayer::Update()
         Vm->PostRmlUpdate();
 }
 
-void RmlUILayer::Tick(float /*deltaTime*/)
+void RmlUILayer::Draw(float /*deltaTime*/)
 {
     BeginFrame();
     RenderFrame();

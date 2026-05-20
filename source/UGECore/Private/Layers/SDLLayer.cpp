@@ -2,9 +2,8 @@
 #include <Layers/LuaLayer.h>
 #include <Layers/LoggingLayer.h>
 #include <Layers/PhysFSLayer.h>
+#include <Layers/PhysicsLayer.h>
 #include <GameClasses/SceneObject.h>
-#include <GameClasses/BoxCollision.h>
-#include <GameClasses/BoxCollisionRegistry.h>
 #include <SceneRegistry.h>
 #include <ServiceLocator.h>
 #include <UGEApplication.h>
@@ -30,8 +29,15 @@ std::expected<std::unique_ptr<AppLayer>, std::string> SDLLayer::Create()
     if (!App->m_renderer)
         return std::unexpected(std::format("SDL_CreateRenderer failed: {}", SDL_GetError()));
 
+    // ── Logical presentation ───────────────────────────────────────────────────
+    const int RefW = (S.RefWidth  > 0) ? S.RefWidth  : S.WindowWidth;
+    const int RefH = (S.RefHeight > 0) ? S.RefHeight : S.WindowHeight;
+    SDL_SetRenderLogicalPresentation(App->m_renderer.get(), RefW, RefH,
+                                     SDL_LOGICAL_PRESENTATION_LETTERBOX);
+    App->m_refWidth  = RefW;
+    App->m_refHeight = RefH;
+
     SDL_SetRenderDrawBlendMode(App->m_renderer.get(), SDL_BLENDMODE_BLEND);
-    App->InitCollisionHooks();
 
     if (auto* Log = ServiceLocator::TryGet<LoggingLayer>())
         App->SetLogFunction(Log->MakeSink());
@@ -45,10 +51,6 @@ SDLLayer::~SDLLayer()
     // Unload the scene first — it may hold SDL resources that must be freed
     // before the renderer and window are destroyed.
     UnloadScene();
-    // Only deactivate if we are the currently live registry — guards against
-    // the moved-from temporary in Create() nulling out s_active after the move.
-    if (BoxCollisionRegistry::Active() == &m_collisionRegistry)
-        BoxCollisionRegistry::SetActive(nullptr);
     if (m_logFn) SDL_SetLogOutputFunction(nullptr, nullptr);
     m_renderer.reset();
     m_window.reset();
@@ -62,31 +64,22 @@ SDLLayer::SDLLayer(SDLLayer&& other) noexcept
     , m_running(other.m_running)
     , m_logFn(std::move(other.m_logFn))
     , m_activeScene(std::move(other.m_activeScene))
-{
-    // If the moved-from registry was the active one, re-point to our new address.
-    if (BoxCollisionRegistry::Active() == &other.m_collisionRegistry)
-        BoxCollisionRegistry::SetActive(&m_collisionRegistry);
-}
+{}
 
 SDLLayer& SDLLayer::operator=(SDLLayer&& other) noexcept
 {
     if (this != &other) {
         UnloadScene();
-        if (BoxCollisionRegistry::Active() == &m_collisionRegistry)
-            BoxCollisionRegistry::SetActive(nullptr);
         if (m_logFn) SDL_SetLogOutputFunction(nullptr, nullptr);
         m_renderer.reset();
         m_window.reset();
         if (m_sdlInit) SDL_Quit();
-        m_window       = std::move(other.m_window);
-        m_renderer     = std::move(other.m_renderer);
-        m_sdlInit      = std::exchange(other.m_sdlInit, false);
-        m_running      = other.m_running;
-        m_logFn        = std::move(other.m_logFn);
-        m_activeScene  = std::move(other.m_activeScene);
-
-        if (BoxCollisionRegistry::Active() == &other.m_collisionRegistry)
-            BoxCollisionRegistry::SetActive(&m_collisionRegistry);
+        m_window      = std::move(other.m_window);
+        m_renderer    = std::move(other.m_renderer);
+        m_sdlInit     = std::exchange(other.m_sdlInit, false);
+        m_running     = other.m_running;
+        m_logFn       = std::move(other.m_logFn);
+        m_activeScene = std::move(other.m_activeScene);
     }
     return *this;
 }
@@ -162,7 +155,6 @@ bool SDLLayer::HandleEvent(SDL_Event& Event)
 // ── AppLayer ──────────────────────────────────────────────────────────────────
 void SDLLayer::Update()
 {
-    // Process any pending scene load requested since last frame.
     if (m_pendingScene.has_value())
     {
         auto Name = std::move(*m_pendingScene);
@@ -175,49 +167,20 @@ void SDLLayer::Update()
         m_activeScene->Update();
 }
 
-void SDLLayer::Tick(float deltaTime)
+void SDLLayer::Draw(float deltaTime)
 {
     if (m_bgTexture)
         SDL_RenderTexture(m_renderer.get(), m_bgTexture.get(), nullptr, nullptr);
 
     if (m_activeScene)
-        m_activeScene->Tick(deltaTime);
-
-    // ── Collision debug overlay ────────────────────────────────────────────────
-    if (m_showCollisionBoxes && !m_collisionRegistry.Empty())
-    {
-        SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_BLEND);
-
-        for (const auto& Entry : m_collisionRegistry.Entries())
-        {
-            if (!Entry.box) continue;
-            const SDL_FRect Rect {
-                Entry.box->X, Entry.box->Y, Entry.box->W, Entry.box->H
-            };
-            if (Entry.box->Enabled)
-            {
-                // Semi-transparent fill — active (green)
-                SDL_SetRenderDrawColor(m_renderer.get(), 0, 255, 100, 40);
-                SDL_RenderFillRect(m_renderer.get(), &Rect);
-                // Solid outline
-                SDL_SetRenderDrawColor(m_renderer.get(), 0, 255, 100, 220);
-                SDL_RenderRect(m_renderer.get(), &Rect);
-            }
-            else
-            {
-                // Disabled — grey outline only, no fill
-                SDL_SetRenderDrawColor(m_renderer.get(), 160, 160, 160, 120);
-                SDL_RenderRect(m_renderer.get(), &Rect);
-            }
-        }
-    }
+        m_activeScene->Draw(deltaTime);
+    // Physics body debug overlay is rendered by PhysicsLayer::Draw() when
+    // the "debug.show_collision" transient key is set (via Physics.ShowCollision()).
 }
 
 // ── Scene management ──────────────────────────────────────────────────────────
 void SDLLayer::LoadScene(const char* SceneName)
 {
-    // Queue the load; the actual swap happens at the top of the next Update()
-    // so any in-progress frame completes cleanly first.
     m_pendingScene = SceneName;
 }
 
@@ -233,8 +196,8 @@ void SDLLayer::loadSceneNow(const char* SceneName)
     }
 
     m_activeScene = std::move(NewScene);
+    m_camera = Camera2D{};
 
-    // If the scene is also an IScriptableObject, hook it into Lua automatically.
     if (auto* Scriptable = dynamic_cast<IScriptableObject*>(m_activeScene.get()))
         if (auto* Lua = ServiceLocator::TryGet<LuaLayer>())
             Lua->Register(Scriptable);
@@ -244,16 +207,20 @@ void SDLLayer::loadSceneNow(const char* SceneName)
 
 void SDLLayer::UnloadScene()
 {
-    m_pendingScene.reset(); // cancel any queued load
+    m_pendingScene.reset();
 
     if (!m_activeScene) return;
 
-    // Unhook from Lua before destroying.
     if (auto* Scriptable = dynamic_cast<IScriptableObject*>(m_activeScene.get()))
         if (auto* Lua = ServiceLocator::TryGet<LuaLayer>())
             Lua->Unregister(Scriptable);
 
+    // Destroy scene first — all PhysicsBodyHandle members release their b2 bodies here.
     m_activeScene.reset();
+
+    // Tear down the physics world after all handles have been released.
+    if (auto* Physics = ServiceLocator::TryGet<PhysicsLayer>())
+        Physics->ShutdownPhysics();
 }
 
 // ── IScriptableObject ─────────────────────────────────────────────────────────
@@ -270,30 +237,21 @@ void SDLLayer::RegisterObject(sol::state& Lua)
         LoadScene(Name.c_str());
     });
 
-    Sdl.set_function("ShowCollision", [this]() {
-        const bool Next = !m_showCollisionBoxes;
-        ShowCollisionBoxes(Next);
-        Log(std::format("[SDL] Collision overlay {}", Next ? "ON" : "OFF"));
+    Sdl.set_function("SetCamera", [this](float WorldX, float WorldY) {
+        m_camera.WorldX = WorldX;
+        m_camera.WorldY = WorldY;
+    });
+
+    Sdl.set_function("MoveCamera", [this](float Dx, float Dy) {
+        MoveCamera(Dx, Dy);
     });
 }
 
 void SDLLayer::RegisterWithServiceLocator()
 {
-    // SDLLayer::Create() returns unique_ptr<AppLayer>, so pushLayer<AppLayer> would
-    // not register the concrete SDLLayer* type. Register explicitly here.
     ServiceLocator::Provide(this);
 }
 
-// ── Collision registry ────────────────────────────────────────────────────────
-CollisionHandle SDLLayer::RegisterCollision(BoxCollision* Box, std::string Label)
-{
-    return m_collisionRegistry.Register(Box, std::move(Label));
-}
-
-void SDLLayer::InitCollisionHooks()
-{
-    BoxCollisionRegistry::SetActive(&m_collisionRegistry);
-}
 
 // ── Free helpers ──────────────────────────────────────────────────────────────
 std::expected<UniqueTexture, std::string>

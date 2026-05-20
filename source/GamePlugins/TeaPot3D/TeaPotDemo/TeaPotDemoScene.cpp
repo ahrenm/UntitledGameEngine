@@ -52,18 +52,18 @@ TeaPotDemoScene::TeaPotDemoScene(SDL_Renderer* Renderer, SDL_Window* Window)
     // ── Light colour binding — reacts to the UI colour dropdown ───────────────
     // The ViewModel seeds KEY_LIGHT_COLOR to "white" before RegisterWith returns,
     // so this subscription will fire immediately with the default and keep in sync.
-    m_lightColorBinding = APPSTATE_BIND_TRANSIENT(
+    m_lightColorBinding = DATA_BIND(
         TeaPotDemoViewModel::KEY_LIGHT_COLOR, std::string("white"),
-        [this](const std::string&, const AppStateValue& Val)
+        [this](const Tag&, const DataValue& Val)
         {
-            if (const auto* S = std::get_if<std::string>(&Val))
+            if (const auto* S = Val.TryAs<std::string>())
                 applyLightColor(*S);
-        });
+        }, Transient);
 
     // Seed from current stored value (covers the case where the ViewModel seeded
     // it before the scene subscribed).
     if (const auto* V = m_lightColorBinding.GetValue())
-        if (const auto* S = std::get_if<std::string>(V))
+        if (const auto* S = V->TryAs<std::string>())
             applyLightColor(*S);
 
     // ── UI overlay ────────────────────────────────────────────────────────────
@@ -104,11 +104,11 @@ void TeaPotDemoScene::applyLightColor(const std::string& ColorName)
 // ── Update ────────────────────────────────────────────────────────────────────
 void TeaPotDemoScene::Update()
 {
-    // No per-frame logic needed; rotation is applied in Tick().
+    // No per-frame logic needed; rotation is applied in Draw().
 }
 
-// ── Tick ──────────────────────────────────────────────────────────────────────
-void TeaPotDemoScene::Tick(float DeltaTime)
+// ── Draw ──────────────────────────────────────────────────────────────────────
+void TeaPotDemoScene::Draw(float DeltaTime)
 {
     if (auto* R = ServiceLocator::TryGet<Render3DLayer>())
     {

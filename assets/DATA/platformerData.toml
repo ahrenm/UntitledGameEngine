@@ -1,16 +1,31 @@
 ﻿# platformerData.toml
 # Runtime configuration for PlatformerScene.
+#
+# Coordinate system: Y-up world pixels (reference area 1600 × 1200).
+#   (0, 0) = bottom-left of the reference area.  X right, Y up.
+#   Physics values are unsigned magnitudes; gravity is applied as negative
+#   Y acceleration (downward) each frame.  Jump velocity is positive (upward).
+
+[world]
+ref_width  = 1600
+ref_height = 1200
 
 [physics]
-gravity        = 1.5
-ground_epsilon = 2.0
-speed          = 8.0
+# gravity_x/y override the engine-level physics.gravity.* transient tags (m/s²).
+# Negative Y = downward in Y-up world space.
+# Derivation: old 1.5 px/frame² × 30² fps² ÷ 100 PPM ≈ 13.5 m/s²
+gravity_x      = 0.0
+gravity_y      = -13.5
+
+# Horizontal speed in world pixels per second (old: 8 px/frame × 30fps = 240 px/s)
+speed          = 240.0
+# Jump height in world pixels (unchanged)
 jump_height    = 280.0
 
 [assets]
 background = "assets/gameBG.png"
 document   = "assets/ui/platformer.rml"
-tile_map   = "assets/DATA/platformerMap.toml"
+tile_map_key = "platformerMap"
 
 [tiles]
 tile_ground = "assets/Sprites/TileGround.png"
