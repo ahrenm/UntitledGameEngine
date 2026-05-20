@@ -24,15 +24,11 @@ add_library(UGECore SHARED
     Private/ViewModelRegistry.cpp
     Private/LayerRegistry.cpp
 
-    Public/Render3D/Camera3D.h
-    Public/Render3D/Light3D.h
-    Public/Render3D/Mesh3D.h
-
-    Private/Sprite/SpriteSheet.cpp
-    Private/Sprite/Sprite.cpp
     Public/Sprite/Sprite.h
     Public/Sprite/SpriteSheet.h
     Public/Sprite/AnimatedSprite.h
+    Private/Sprite/Sprite.cpp
+    Private/Sprite/SpriteSheet.cpp
         Public/toml.hpp
      Public/GameClasses/BoxCollision.h
      Public/GameClasses/BoxCollisionRegistry.h
@@ -55,7 +51,6 @@ target_include_directories(UGECore
         "${rmlui_SOURCE_DIR}/Backends"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/Private"
-        "${tinyobjloader_SOURCE_DIR}"
 )
 
 target_compile_definitions(UGECore
@@ -81,14 +76,13 @@ target_link_libraries(UGECore
     PRIVATE
         RmlUi::Core
         RmlUi::Debugger
-        tinyobjloader          # PRIVATE: implementation detail; header only included in Render3DLayer.cpp
+        glm::glm               # PRIVATE: glm is no longer exposed via UGECore public headers
     PUBLIC
-        glm::glm               # PUBLIC: Camera3D.h / Light3D.h / Mesh3D.h expose glm types
         sol2::sol2
-        lua_static          # PUBLIC: sol2 public headers include lua.h directly
-        SDL3::SDL3          # PUBLIC so SDL3/SDL_main.h is visible in main.cpp
+        lua_static             # PUBLIC: sol2 public headers include lua.h directly
+        SDL3::SDL3             # PUBLIC so SDL3/SDL_main.h is visible in main.cpp
         SDL3_image::SDL3_image
-        physfs-static       # PUBLIC: PhysFSLayer.h includes physfs.h directly
+        physfs-static          # PUBLIC: PhysFSLayer.h includes physfs.h directly
 )
 
 

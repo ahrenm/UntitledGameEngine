@@ -21,7 +21,7 @@ UGEApplication::Create(int Argc, char* Argv[], LaunchSettings LaunchConfig)
     auto App = std::unique_ptr<UGEApplication>(new UGEApplication());
 
     // BASE UGECore LAYERS
-    // LoggingLayer | PhysFSLayer | UGEDataLayer| SDLLayer | LUALayer| RmlUILayer
+    // LoggingLayer | PhysFSLayer (virtual file system) | UGEDataLayer| SDLLayer | LUALayer| RmlUILayer
 
     // ── Push all registered layers in load order ─────────────────────────
     for (const auto& Name : LayerRegistry::Instance().Names())
@@ -65,6 +65,7 @@ UGEApplication::Create(int Argc, char* Argv[], LaunchSettings LaunchConfig)
 
 void UGEApplication::Run()
 {
+    //TODO: consider moving target FPS to launch settings/transient
     constexpr Uint64 TARGET_FRAME_NS = 1'000'000'000ULL / 30; // ~33.33 ms
     Uint64 NextFrame = SDL_GetTicksNS();
     Uint64 LastFrame = NextFrame;
@@ -76,7 +77,7 @@ void UGEApplication::Run()
         if (Now >= NextFrame)
         {
             // Actual elapsed seconds since the last tick fired.
-            const float deltaTime = static_cast<float>(Now - LastFrame) / 1'000'000'000.0f;  //TODO: consider moving to launch settings/transient
+            const float deltaTime = static_cast<float>(Now - LastFrame) / 1'000'000'000.0f;
             LastFrame = Now;
 
             NextFrame += TARGET_FRAME_NS;

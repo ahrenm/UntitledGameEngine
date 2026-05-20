@@ -6,26 +6,46 @@
 
 namespace
 {
+    // Read an optional scalar from a toml table into dest, casting as needed.
+    // No-ops silently if the key is absent; the default in LaunchSettings is preserved.
+    template<typename TomlT, typename DestT = TomlT>
+    void readOpt(const toml::table& table, std::string_view key, DestT& dest)
+    {
+        if (const auto value = table[key].template value<TomlT>())
+            dest = static_cast<DestT>(*value);
+    }
+
+    // Read a uniform array of strings from a toml table key.
+    // Returns an empty vector (not an error) when the key is absent.
+    std::expected<std::vector<std::string>, std::string> readStringArray(
+        const toml::table& table, std::string_view key, std::string_view context)
+    {
+        std::vector<std::string> result;
+        const auto* arr = table[key].as_array();
+        if (!arr) return result;
+
+        result.reserve(arr->size());
+        for (const auto& node : *arr)
+        {
+            if (const auto value = node.value<std::string>())
+                result.push_back(*value);
+            else
+                return std::unexpected(std::string(context) + ": '" + std::string(key) + "' must contain strings");
+        }
+        return result;
+    }
+
     std::expected<MountPoint, std::string> parseMountPoint(const toml::table& table)
     {
-        MountPoint mount;
-
-        const auto realPath = table["RealPath"].value<std::string>();
+        const auto realPath    = table["RealPath"].value<std::string>();
         const auto virtualPath = table["VirtualPath"].value<std::string>();
-        const auto prepend = table["Prepend"].value<bool>();
+        const auto prepend     = table["Prepend"].value<bool>();
 
-        if (!realPath)
-            return std::unexpected("UGESettings.toml: each MountPoints entry requires string field 'RealPath'");
-        if (!virtualPath)
-            return std::unexpected("UGESettings.toml: each MountPoints entry requires string field 'VirtualPath'");
-        if (!prepend)
-            return std::unexpected("UGESettings.toml: each MountPoints entry requires bool field 'Prepend'");
+        if (!realPath)    return std::unexpected("UGESettings.toml: each MountPoints entry requires string field 'RealPath'");
+        if (!virtualPath) return std::unexpected("UGESettings.toml: each MountPoints entry requires string field 'VirtualPath'");
+        if (!prepend)     return std::unexpected("UGESettings.toml: each MountPoints entry requires bool field 'Prepend'");
 
-        mount.RealPath = *realPath;
-        mount.VirtualPath = *virtualPath;
-        mount.Prepend = *prepend;
-
-        return mount;
+        return MountPoint{ *realPath, *virtualPath, *prepend };
     }
 }
 
@@ -50,53 +70,34 @@ std::expected<LaunchSettings, std::string> LoadLaunchSettingsFromAppDirectory()
 
     LaunchSettings settings;
 
-    if (const auto value = config["WindowTitle"].value<std::string>())
-        settings.WindowTitle = *value;
-    if (const auto value = config["WindowWidth"].value<int64_t>())
-        settings.WindowWidth = static_cast<int>(*value);
-    if (const auto value = config["WindowHeight"].value<int64_t>())
-        settings.WindowHeight = static_cast<int>(*value);
-    if (const auto value = config["InitScript"].value<std::string>())
-        settings.InitScript = *value;
+    // Scalar fields — preserved defaults when key is absent
+    readOpt<std::string>  (config, "WindowTitle",  settings.WindowTitle);
+    readOpt<int64_t, int> (config, "WindowWidth",  settings.WindowWidth);
+    readOpt<int64_t, int> (config, "WindowHeight", settings.WindowHeight);
+    readOpt<std::string>  (config, "InitScript",   settings.InitScript);
 
+    // MountPoints array
     if (const auto* mountArray = config["MountPoints"].as_array())
     {
         settings.MountPoints.clear();
         settings.MountPoints.reserve(mountArray->size());
-
         for (const auto& node : *mountArray)
         {
             const auto* mountTable = node.as_table();
             if (!mountTable)
                 return std::unexpected("UGESettings.toml: 'MountPoints' must contain tables");
-
             auto mount = parseMountPoint(*mountTable);
-            if (!mount)
-                return std::unexpected(mount.error());
-
+            if (!mount) return std::unexpected(mount.error());
             settings.MountPoints.push_back(std::move(*mount));
         }
     }
 
+    // Modules.Load string array
     if (const auto* modulesTable = config["Modules"].as_table())
     {
-        if (const auto* loadArray = (*modulesTable)["Load"].as_array())
-        {
-            settings.Modules.clear();
-            settings.Modules.reserve(loadArray->size());
-
-            for (const auto& node : *loadArray)
-            {
-                if (const auto value = node.value<std::string>())
-                {
-                    settings.Modules.push_back(*value);
-                }
-                else
-                {
-                    return std::unexpected("UGESettings.toml: 'Modules.Load' must contain strings");
-                }
-            }
-        }
+        auto modules = readStringArray(*modulesTable, "Load", "UGESettings.toml [Modules]");
+        if (!modules) return std::unexpected(modules.error());
+        settings.Modules = std::move(*modules);
     }
 
     return settings;

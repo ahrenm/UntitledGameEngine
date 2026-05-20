@@ -10,7 +10,7 @@ jump_height    = 280.0
 [assets]
 background = "assets/gameBG.png"
 document   = "assets/ui/platformer.rml"
-tile_map   = "assets/DATA/platformerMap.toml"
+tile_map_key = "platformerMap"
 
 [tiles]
 tile_ground = "assets/Sprites/TileGround.png"

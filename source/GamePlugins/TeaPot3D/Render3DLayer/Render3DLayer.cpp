@@ -4,7 +4,7 @@
 
 #include <Render3DLayer/Render3DLayer.h>
 #include <Layers/SDLLayer.h>
-#include <Render3D/Mesh3D.h>
+#include "Mesh3D.h"
 #include <Layers/PhysFSLayer.h>
 #include <ServiceLocator.h>
 

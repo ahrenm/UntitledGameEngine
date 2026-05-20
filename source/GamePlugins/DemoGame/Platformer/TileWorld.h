@@ -30,9 +30,9 @@ struct TileWorld
     TileSet Walls;
     TileSet Coins;
 
-    void Build(const char* DataKey);
+    void Build(const char* DataKey, const char* MapKey);
 
 private:
     void buildTileSprites(const char* DataKey);
-    void buildTileMap();
+    void buildTileMap(const char* MapKey);
 };

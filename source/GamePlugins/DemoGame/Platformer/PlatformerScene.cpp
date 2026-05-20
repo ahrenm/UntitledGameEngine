@@ -8,7 +8,7 @@ PlatformerScene::PlatformerScene(SDL_Renderer* Renderer, SDL_Window* Window)
 
     auto* dataLayer = GetDataLayer();
 
-    // Pulls from the data set stored in /assets/DATA
+    // Pulls from the data set stored in /assets/DATA.
     // .toml files in this location are pre-loaded by the data layer at startup and referenced by file name/key
     // Data elements in the file are referenced by . separated paths
 
@@ -28,7 +28,8 @@ PlatformerScene::PlatformerScene(SDL_Renderer* Renderer, SDL_Window* Window)
     dataLayer->Transient.Set(TAG_JUMP_HEIGHT.data(),    AppStateValue{ dataLayer->Data.GetFloat(PLATFORMER_DATA_KEY, "physics.jump_height"    ).value_or(0.0f) });
 
     // ── Tile world (must exist before character is created) ───────────────────
-    m_world.Build(PLATFORMER_DATA_KEY);
+    const auto mapKey = dataLayer->Data.GetString(PLATFORMER_DATA_KEY, "assets.tile_map_key").value_or("");
+    m_world.Build(PLATFORMER_DATA_KEY, mapKey.c_str());
 
     // ── Character ─────────────────────────────────────────────────────────────
     m_character = std::make_unique<PlatformerCharacter>(Renderer, Window, m_world, PLATFORMER_DATA_KEY);
@@ -96,6 +97,7 @@ void PlatformerScene::Tick(float DeltaTime)
     const float SX = static_cast<float>(W) / REF_W;
     const float SY = static_cast<float>(H) / REF_H;
 
+    //Draw tile lambda
     auto drawTile = [&](const Tile& T)
     {
         if (!T.IsVisible) return;

@@ -6,6 +6,7 @@
 
 int main(int Argc, char* Argv[])
 {
+    //Load settings from UGESettings.toml
     auto settings = LoadLaunchSettingsFromAppDirectory();
     if (!settings)
     {
@@ -15,13 +16,14 @@ int main(int Argc, char* Argv[])
 
     std::string moduleError;
 
-    // Load all configured modules in order
+    // Load Game Plugins listed in settings
     if (!ModuleLoader::LoadModulesRelativeToExecutable(settings->Modules, moduleError))
     {
         fprintf(stderr, "Fatal: failed to load modules: %s\n", moduleError.c_str());
         return 1;
     }
 
+    //Create the UGEApplication
     auto ugeApp = UGEApplication::Create(Argc, Argv, *settings);
     if (!ugeApp) { fprintf(stderr, "Fatal: %s\n", ugeApp.error().c_str()); return 1; }
 

@@ -5,10 +5,10 @@
 #include <Sprite/Sprite.h>
 
 // ── Build ─────────────────────────────────────────────────────────────────────
-void TileWorld::Build(const char* DataKey)
+void TileWorld::Build(const char* DataKey, const char* MapKey)
 {
     buildTileSprites(DataKey);
-    buildTileMap();
+    buildTileMap(MapKey);
 }
 
 // ── buildTileSprites (private) ────────────────────────────────────────────────
@@ -51,10 +51,16 @@ void TileWorld::buildTileSprites(const char* DataKey)
 // Reads the "tiles" array-of-tables from the "platformerMap" DataLayer dataset
 // and populates Walls and Coins.  After both vectors are fully populated,
 // builds the BoxCollisionGrid for each set.
-void TileWorld::buildTileMap()
+void TileWorld::buildTileMap(const char* MapKey)
 {
     auto* dataLayer    = ServiceLocator::TryGet<UGEDataLayer>();
     auto* loggingLayer = ServiceLocator::TryGet<LoggingLayer>();
+
+    if (!MapKey || !*MapKey)
+    {
+        if (loggingLayer) loggingLayer->Log("[TileWorld] map dataset key is empty");
+        return;
+    }
 
     if (!dataLayer)
     {
@@ -62,10 +68,10 @@ void TileWorld::buildTileMap()
         return;
     }
 
-    const auto* Rows = dataLayer->Data.GetRows("platformerMap", "tiles");
+    const auto* Rows = dataLayer->Data.GetRows(MapKey, "tiles");
     if (!Rows)
     {
-        if (loggingLayer) loggingLayer->Log("[TileWorld] dataset 'platformerMap' has no 'tiles' array");
+        if (loggingLayer) loggingLayer->Log(std::string("[TileWorld] dataset '") + MapKey + "' has no 'tiles' array");
         return;
     }
 
@@ -86,7 +92,7 @@ void TileWorld::buildTileMap()
         if (const auto It = TileSprites.find(*spriteKey); It != TileSprites.end())
             Spr = &It->second;
         else if (loggingLayer)
-            loggingLayer->Log("[TileWorld] unknown tile key '" + *spriteKey + "' in platformerMap");
+            loggingLayer->Log(std::string("[TileWorld] unknown tile key '") + *spriteKey + "' in " + MapKey);
 
         const bool IsCoin = (*spriteKey == "tile-coin");
         auto& Target = IsCoin ? Coins.Tiles : Walls.Tiles;

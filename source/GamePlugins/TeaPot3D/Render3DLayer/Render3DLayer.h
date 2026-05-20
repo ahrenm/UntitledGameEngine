@@ -2,9 +2,9 @@
 #include <Layers/AppLayer.h>
 #include <IScriptableObject.h>
 #include <LayerRegistry.h>
-#include <Render3D/Camera3D.h>
-#include <Render3D/Light3D.h>
-#include <Render3D/Mesh3D.h>
+#include "Camera3D.h"
+#include "Light3D.h"
+#include "Mesh3D.h"
 #include <SDL3/SDL.h>
 #include <expected>
 #include <memory>
