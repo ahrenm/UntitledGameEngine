@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 
-class UDEDataLayer; // forward declaration — cached for per-frame transient writes
+class UGEDataLayer; // forward declaration — cached for per-frame transient writes
 
 // ── PlatformerCharacter ───────────────────────────────────────────────────────
 //
@@ -50,7 +50,7 @@ private:
     static constexpr float FRAME_DT = 1.0f / 30.0f;
 
     TileWorld& m_world;   // non-owning ref; owned by PlatformerScene
-    UDEDataLayer*      m_dataLayer = nullptr; // cached non-owning; for per-frame transient writes
+    UGEDataLayer*      m_dataLayer = nullptr; // cached non-owning; for per-frame transient writes
 
     // ── Character identity — bound to persistent AppState ────────────────────
     std::string     m_characterName;

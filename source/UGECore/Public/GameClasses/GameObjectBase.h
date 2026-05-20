@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "../Layers/LoggingLayer.h"
 #include "../Layers/PhysFSLayer.h"
-#include "../Layers/UDEDataLayer.h"
+#include "../Layers/UGEDataLayer.h"
 #include "../Layers/LuaLayer.h"
 #include "../Layers/SDLLayer.h"
 #include "../Layers/RmlUILayer.h"
@@ -27,7 +27,7 @@ public:
 protected:
     [[nodiscard]] static LoggingLayer*   GetLoggingLayer()   { return ServiceLocator::TryGet<LoggingLayer>(); }
     [[nodiscard]] static PhysFSLayer*    GetPhysFSLayer()    { return ServiceLocator::TryGet<PhysFSLayer>(); }
-    [[nodiscard]] static UDEDataLayer*   GetDataLayer()      { return ServiceLocator::TryGet<UDEDataLayer>(); }
+    [[nodiscard]] static UGEDataLayer*   GetDataLayer()      { return ServiceLocator::TryGet<UGEDataLayer>(); }
     [[nodiscard]] static LuaLayer*       GetLuaLayer()       { return ServiceLocator::TryGet<LuaLayer>(); }
     [[nodiscard]] static SDLLayer*       GetSDLLayer()       { return ServiceLocator::TryGet<SDLLayer>(); }
     [[nodiscard]] static RmlUILayer*     GetUILayer()        { return ServiceLocator::TryGet<RmlUILayer>(); }

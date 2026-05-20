@@ -1,13 +1,13 @@
 ﻿#include <LuaTestsScene.h>
 #include <Layers/RmlUILayer.h>
-#include <Layers/UDEDataLayer.h>
+#include <Layers/UGEDataLayer.h>
 #include <ServiceLocator.h>
 
 LuaTestsScene::LuaTestsScene(SDL_Renderer* Renderer, SDL_Window* Window)
     : SceneObject(Renderer, Window)
 {
     // Initialise direction to Right (1) before the ViewModel is created.
-    if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+    if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
         Data->Transient.Set("luaTests.coinDirection", AppStateValue{1});
 
     GetSDLLayer()->SetBackground("assets/luaBG.jpg");

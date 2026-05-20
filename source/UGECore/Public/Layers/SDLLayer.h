@@ -29,7 +29,7 @@ using UniqueTexture  = std::unique_ptr<SDL_Texture,  SDLTextureDeleter>;
 LoadTextureFromPhysFS(const char* Path);
 
 // ── SDLLayer ──────────────────────────────────────────────────────────────────
-// Load order: 4 — must follow UDEDataLayer (3).
+// Load order: 4 — must follow UGEDataLayer (3).
 class SDLLayer : public AppLayer, public IScriptableObject, public IEventHandler
 {
 public:

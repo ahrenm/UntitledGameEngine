@@ -8,10 +8,9 @@
 #include <ranges>
 #include <utility>
 
-#include "Layers/LuaLayer.h"
 
 
-// Static definition — configure before calling Create().
+// Static definition
 LaunchSettings UGEApplication::Settings;
 
 std::expected<std::unique_ptr<UGEApplication>, std::string>
@@ -20,6 +19,9 @@ UGEApplication::Create(int Argc, char* Argv[], LaunchSettings LaunchConfig)
     Settings = std::move(LaunchConfig);
 
     auto App = std::unique_ptr<UGEApplication>(new UGEApplication());
+
+    // BASE UGECore LAYERS
+    // LoggingLayer | PhysFSLayer | UGEDataLayer| SDLLayer | LUALayer| RmlUILayer
 
     // ── Push all registered layers in load order ─────────────────────────
     for (const auto& Name : LayerRegistry::Instance().Names())
@@ -74,7 +76,7 @@ void UGEApplication::Run()
         if (Now >= NextFrame)
         {
             // Actual elapsed seconds since the last tick fired.
-            const float deltaTime = static_cast<float>(Now - LastFrame) / 1'000'000'000.0f;
+            const float deltaTime = static_cast<float>(Now - LastFrame) / 1'000'000'000.0f;  //TODO: consider moving to launch settings/transient
             LastFrame = Now;
 
             NextFrame += TARGET_FRAME_NS;

@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <GameClasses/SceneObject.h>
 #include <SceneRegistry.h>
-#include <Layers/UDEDataLayer.h>
+#include <Layers/UGEDataLayer.h>
 
 // ── TeaPotDemoScene ────────────────────────────────────────────────────────────
 // A full-viewport 3D scene that renders the Utah teapot (assets/3d/teapot.obj)

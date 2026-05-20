@@ -2,7 +2,7 @@
 #include <ServiceLocator.h>
 #include <Layers/PhysFSLayer.h>
 #include <Layers/LoggingLayer.h>
-#include <Layers/UDEDataLayer.h>
+#include <Layers/UGEDataLayer.h>
 #include <Layers/SDLLayer.h>
 #include <GameClasses/ViewModel.h>
 #include <ViewModelRegistry.h>
@@ -218,7 +218,7 @@ void RmlUILayer::UnloadPage()
 void RmlUILayer::loadDocumentNow(const std::string& VirtualPath)
 {
     auto& Fs = ServiceLocator::Get<PhysFSLayer>();
-    auto* DataLayer = ServiceLocator::TryGet<UDEDataLayer>();
+    auto* DataLayer = ServiceLocator::TryGet<UGEDataLayer>();
 
     m_activeDocumentSlug = NormalizeDocumentSlug(VirtualPath);
     if (DataLayer && !m_activeDocumentSlug.empty())

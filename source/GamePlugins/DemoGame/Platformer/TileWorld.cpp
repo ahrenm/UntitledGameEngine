@@ -1,5 +1,5 @@
 ﻿#include "TileWorld.h"
-#include <Layers/UDEDataLayer.h>
+#include <Layers/UGEDataLayer.h>
 #include <Layers/LoggingLayer.h>
 #include <ServiceLocator.h>
 #include <Sprite/Sprite.h>
@@ -17,7 +17,7 @@ void TileWorld::Build(const char* DataKey)
 // automatically for any tile whose Spr remains nullptr.
 void TileWorld::buildTileSprites(const char* DataKey)
 {
-    auto* dataLayer = ServiceLocator::TryGet<UDEDataLayer>();
+    auto* dataLayer = ServiceLocator::TryGet<UGEDataLayer>();
     auto* logLayer  = ServiceLocator::TryGet<LoggingLayer>();
 
     if (!dataLayer) return;
@@ -53,7 +53,7 @@ void TileWorld::buildTileSprites(const char* DataKey)
 // builds the BoxCollisionGrid for each set.
 void TileWorld::buildTileMap()
 {
-    auto* dataLayer    = ServiceLocator::TryGet<UDEDataLayer>();
+    auto* dataLayer    = ServiceLocator::TryGet<UGEDataLayer>();
     auto* loggingLayer = ServiceLocator::TryGet<LoggingLayer>();
 
     if (!dataLayer)

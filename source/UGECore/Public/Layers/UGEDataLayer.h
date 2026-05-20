@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-// ── UDEDataLayer ──────────────────────────────────────────────────────────────
+// ── UGEDataLayer ──────────────────────────────────────────────────────────────
 // Central data layer hosting three public store objects:
 //
 //   State     — persistent key-value store (survives sessions; serialised)
@@ -21,7 +21,7 @@
 //   Data      — read-only TOML dataset store (assets/DATA/**/*.toml)
 //
 // Access any store directly, e.g.:
-//   auto& layer = ServiceLocator::Get<UDEDataLayer>();
+//   auto& layer = ServiceLocator::Get<UGEDataLayer>();
 //   layer.State.Set("ui.visible", 1);
 //   layer.Transient.Set("game.score", 0);
 //   auto gravity = layer.Data.GetFloat("platformerData", "physics.gravity");
@@ -30,16 +30,16 @@
 // Use SubscribePrefix for cross-store prefix watching.
 //
 // Load order: 3 — must follow PhysFSLayer (2) as Create() scans assets/DATA/ via PhysFS.
-class UDEDataLayer : public AppLayer, public IScriptableObject
+class UGEDataLayer : public AppLayer, public IScriptableObject
 {
 public:
-    REGISTER_LAYER("ude-data", 3.0f, UDEDataLayer)
+    REGISTER_LAYER("ude-data", 3.0f, UGEDataLayer)
 
     // ── Factory ───────────────────────────────────────────────────────────────
     // Creates the layer and immediately scans assets/DATA/ via PhysFSLayer,
     // loading all *.toml files into Data.  PhysFSLayer must be registered with
     // the ServiceLocator before calling Create().
-    [[nodiscard]] static std::expected<std::unique_ptr<UDEDataLayer>, std::string> Create();
+    [[nodiscard]] static std::expected<std::unique_ptr<UGEDataLayer>, std::string> Create();
 
     // ── Public store objects ──────────────────────────────────────────────────
     RuntimeStore State;      // persistent key-value store  (serialised via SaveState/LoadState)
@@ -69,10 +69,10 @@ public:
     // ── AppLayer ──────────────────────────────────────────────────────────────
     void RegisterWithServiceLocator() override;
 
-    ~UDEDataLayer() override;
+    ~UGEDataLayer() override;
 
 private:
-    UDEDataLayer();
+    UGEDataLayer();
 
     struct PrefixSubscription
     {
@@ -155,7 +155,7 @@ private:
         // Guard against accessing a destroyed store: ServiceLocator::Clear() runs
         // before m_layers tears down, so TryGet returns nullptr once the layer
         // is deregistered — any binding outliving the layer is a safe no-op.
-        if (m_store && m_token && ServiceLocator::TryGet<UDEDataLayer>())
+        if (m_store && m_token && ServiceLocator::TryGet<UGEDataLayer>())
             m_store->Unsubscribe(m_token);
         m_store = nullptr;
         m_token = 0;
@@ -168,7 +168,7 @@ private:
 
 
 // ── APPSTATE_BIND ─────────────────────────────────────────────────────────────
-// Targets UDEDataLayer::State (persistent store).
+// Targets UGEDataLayer::State (persistent store).
 // Injects Key_ with InitialValue_ if absent, subscribes Callback_, and returns
 // an AppStateBinding that auto-unsubscribes on destruction.
 //
@@ -182,10 +182,10 @@ private:
 //           m_model.DirtyVariable("panel_visible");
 //       });
 //
-// Returns an empty (no-op) AppStateBinding if UDEDataLayer is not yet registered.
+// Returns an empty (no-op) AppStateBinding if UGEDataLayer is not yet registered.
 #define APPSTATE_BIND(Key_, InitialValue_, Callback_)                              \
     [&]() -> AppStateBinding {                                                     \
-        auto* _Layer = ServiceLocator::TryGet<UDEDataLayer>();                    \
+        auto* _Layer = ServiceLocator::TryGet<UGEDataLayer>();                    \
         if (!_Layer) return {};                                                    \
         auto& _S = _Layer->State;                                                  \
         if (!_S.Has(Key_)) _S.Set((Key_), AppStateValue{InitialValue_});           \
@@ -193,7 +193,7 @@ private:
     }()
 
 // ── APPSTATE_BIND_TRANSIENT ───────────────────────────────────────────────────
-// Like APPSTATE_BIND but targets UDEDataLayer::Transient (runtime-only store).
+// Like APPSTATE_BIND but targets UGEDataLayer::Transient (runtime-only store).
 //
 // Example:
 //   AppStateBinding m_dragBinding = APPSTATE_BIND_TRANSIENT(
@@ -203,7 +203,7 @@ private:
 //       });
 #define APPSTATE_BIND_TRANSIENT(Key_, InitialValue_, Callback_)                    \
     [&]() -> AppStateBinding {                                                     \
-        auto* _Layer = ServiceLocator::TryGet<UDEDataLayer>();                    \
+        auto* _Layer = ServiceLocator::TryGet<UGEDataLayer>();                    \
         if (!_Layer) return {};                                                    \
         auto& _S = _Layer->Transient;                                              \
         if (!_S.Has(Key_)) _S.Set((Key_), AppStateValue{InitialValue_});           \
@@ -291,5 +291,6 @@ private:
         if (const auto* lsV = (Binding_).GetValue())                              \
             if (const auto* lsS = std::get_if<std::string>(lsV)) (Member_) = *lsS; \
     } while(0)
+
 
 

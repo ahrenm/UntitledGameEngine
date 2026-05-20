@@ -6,19 +6,19 @@
 #include <unordered_map>
 #include <vector>
 
-class UDEDataLayer;
+class UGEDataLayer;
 class StoreSerializer;
 
 // ── RuntimeStore ──────────────────────────────────────────────────────────────
 // Concrete key-value store used for both the persistent (State) and transient
-// (Transient) slots in UDEDataLayer.
+// (Transient) slots in UGEDataLayer.
 //
 // Both slots expose identical API — including Remove(). The distinction between
 // persistence semantics (serialisation, session lifetime) is enforced entirely
-// at the UDEDataLayer level; RuntimeStore itself is policy-free.
+// at the UGEDataLayer level; RuntimeStore itself is policy-free.
 //
 // StoreSerializer is a friend so it can read m_data during Save();
-// it is only ever invoked on the State slot by UDEDataLayer::SaveState /
+// it is only ever invoked on the State slot by UGEDataLayer::SaveState /
 // LoadState — never on Transient.
 class RuntimeStore final : public StoreReadWrite
 {
@@ -37,7 +37,7 @@ public:
     void Remove(const std::string& Key);
 
 private:
-    friend class UDEDataLayer; // wires m_onNotify for cross-store prefix dispatch
+    friend class UGEDataLayer; // wires m_onNotify for cross-store prefix dispatch
 
     struct Subscription
     {
@@ -50,7 +50,7 @@ private:
     std::vector<Subscription>              m_subs;
     SubscriptionToken                      m_nextToken = 1;
 
-    // Wired by UDEDataLayer to forward all Set() notifications to the
+    // Wired by UGEDataLayer to forward all Set() notifications to the
     // cross-store prefix subscription dispatcher.
     std::function<void(const std::string&, const Value&)> m_onNotify;
 

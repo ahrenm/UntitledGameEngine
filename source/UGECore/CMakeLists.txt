@@ -10,7 +10,7 @@ add_library(UGECore SHARED
     Private/ServiceLocator.cpp
     Private/PhysFSFileInterface.cpp
     Private/Layers/AppLayer.cpp
-        Private/Layers/UDEDataLayer.cpp
+        Private/Layers/UGEDataLayer.cpp
         Private/Layers/DataStores/StoreBase.cpp
         Private/Layers/DataStores/RuntimeStore.cpp
         Private/Layers/DataStores/StoreSerializer.cpp
@@ -105,11 +105,9 @@ target_link_libraries(UGECore
 # every other symbol in the DLL) via its default export-all behaviour.
 target_link_options(UGECore PRIVATE "-Wl,-u,_ZN3Rml10FamilyBase8GetNewIdEv")
 
-# Windows: generate UGECore_export.h so UGECORE_EXPORT resolves to dllexport/dllimport
 include(GenerateExportHeader)
 generate_export_header(UGECore
     BASE_NAME        UGECORE
-    EXPORT_FILE_NAME "${CMAKE_CURRENT_SOURCE_DIR}/Public/UGECore_export.h"
 )
 
 # Copy UGECore.dll next to the executable after each build

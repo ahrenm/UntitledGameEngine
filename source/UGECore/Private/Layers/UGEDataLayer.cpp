@@ -1,13 +1,13 @@
-﻿#include <Layers/UDEDataLayer.h>
+﻿#include <Layers/UGEDataLayer.h>
 #include <Layers/PhysFSLayer.h>
 #include <Layers/LoggingLayer.h>
 #include <ServiceLocator.h>
 #include <algorithm>
 #include <format>
 
-// ── UDEDataLayer ──────────────────────────────────────────────────────────────
+// ── UGEDataLayer ──────────────────────────────────────────────────────────────
 
-UDEDataLayer::UDEDataLayer()
+UGEDataLayer::UGEDataLayer()
 {
     // Wire each store's m_onNotify to dispatch cross-store prefix subscriptions.
     auto prefixDispatch = [this](const std::string& Key, const AppStateValue& Val)
@@ -21,15 +21,15 @@ UDEDataLayer::UDEDataLayer()
     Transient.m_onNotify = prefixDispatch;
 }
 
-UDEDataLayer::~UDEDataLayer() = default;
+UGEDataLayer::~UGEDataLayer() = default;
 
-std::expected<std::unique_ptr<UDEDataLayer>, std::string> UDEDataLayer::Create()
+std::expected<std::unique_ptr<UGEDataLayer>, std::string> UGEDataLayer::Create()
 {
-    auto Layer = std::unique_ptr<UDEDataLayer>(new UDEDataLayer());
+    auto Layer = std::unique_ptr<UGEDataLayer>(new UGEDataLayer());
 
     auto* Physfs = ServiceLocator::TryGet<PhysFSLayer>();
     if (!Physfs)
-        return std::unexpected("UDEDataLayer::Create — PhysFSLayer is not registered");
+        return std::unexpected("UGEDataLayer::Create — PhysFSLayer is not registered");
 
     auto* Log = ServiceLocator::TryGet<LoggingLayer>();
     auto logMsg = [Log](const std::string& Msg) { if (Log) Log->Log(Msg); };
@@ -44,26 +44,26 @@ std::expected<std::unique_ptr<UDEDataLayer>, std::string> UDEDataLayer::Create()
         if (Layer->Data.LoadFile(Path))
         {
             ++Loaded;
-            logMsg("UDEDataLayer: loaded dataset from " + Path);
+            logMsg("UGEDataLayer: loaded dataset from " + Path);
         }
         // LoadFile already logs parse/read errors internally.
     }
 
-    logMsg("UDEDataLayer: " + std::to_string(Loaded) + " dataset(s) loaded, " +
+    logMsg("UGEDataLayer: " + std::to_string(Loaded) + " dataset(s) loaded, " +
            std::to_string(Skipped) + " non-toml file(s) skipped in assets/DATA/");
 
     return Layer;
 }
 
-UDEDataLayer::SubscriptionToken
-UDEDataLayer::SubscribePrefix(const std::string& Prefix, ChangeCallback Cb)
+UGEDataLayer::SubscriptionToken
+UGEDataLayer::SubscribePrefix(const std::string& Prefix, ChangeCallback Cb)
 {
     const auto Token = m_nextPrefixToken++;
     m_prefixSubs.push_back({ Prefix, std::move(Cb), Token });
     return Token;
 }
 
-void UDEDataLayer::UnsubscribePrefix(SubscriptionToken Token)
+void UGEDataLayer::UnsubscribePrefix(SubscriptionToken Token)
 {
     std::erase_if(m_prefixSubs,
         [Token](const PrefixSubscription& S) { return S.token == Token; });
@@ -71,19 +71,19 @@ void UDEDataLayer::UnsubscribePrefix(SubscriptionToken Token)
 
 // ── Serialisation ─────────────────────────────────────────────────────────────
 
-bool UDEDataLayer::SaveState(const char* FilePath)
+bool UGEDataLayer::SaveState(const char* FilePath)
 {
     return m_serializer.Save(State, FilePath);
 }
 
-bool UDEDataLayer::LoadState(const char* FilePath)
+bool UGEDataLayer::LoadState(const char* FilePath)
 {
     return m_serializer.Load(State, FilePath);
 }
 
 // ── ScriptableObject ──────────────────────────────────────────────────────────
 
-void UDEDataLayer::RegisterObject(sol::state& Lua)
+void UGEDataLayer::RegisterObject(sol::state& Lua)
 {
     auto dataTable = Lua.create_named_table("Data");
 
@@ -198,7 +198,7 @@ void UDEDataLayer::RegisterObject(sol::state& Lua)
         });
 }
 
-void UDEDataLayer::RegisterWithServiceLocator()
+void UGEDataLayer::RegisterWithServiceLocator()
 {
     ServiceLocator::Provide(this);
 }

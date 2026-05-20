@@ -8,7 +8,7 @@ void TeaPotDemoViewModel::RegisterWith(Rml::Context* Context, const char* ModelN
     SetContext(Context);
 
     // Seed the transient store with the default colour before the model is built.
-    if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+    if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
         Data->Transient.Set(KEY_LIGHT_COLOR, AppStateValue{m_lightColor});
 
     auto Ctor = Context->CreateDataModel(ModelName);
@@ -28,7 +28,7 @@ void TeaPotDemoViewModel::RegisterWith(Rml::Context* Context, const char* ModelN
             m_lightColor = FormCtrl->GetValue();
             m_model.DirtyVariable("light_color");
 
-            if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
                 Data->Transient.Set(KEY_LIGHT_COLOR, AppStateValue{m_lightColor});
         });
 

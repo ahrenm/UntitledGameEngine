@@ -6,13 +6,13 @@
 #include <unordered_map>
 #include <vector>
 
-class UDEDataLayer;  // for friend declaration
+class UGEDataLayer;  // for friend declaration
 
 // ── DatasetStore ──────────────────────────────────────────────────────────────
 // Read-only store backed by TOML files in assets/DATA/.
 // Each file is keyed by its filename stem (e.g. "platformerData").
 // Scalar access uses dot-notation matching the TOML section/key path.
-// Loaded automatically on the first UDEDataLayer::Update() call.
+// Loaded automatically during UGEDataLayer::Create().
 //
 // Key shape differs from PersistentStore / TransientStore — it is always
 // two-part (Dataset + Path) rather than a single flat key.
@@ -56,7 +56,7 @@ public:
     bool LoadFile(const std::string& VfsPath);
 
 private:
-    friend class UDEDataLayer;
+    friend class UGEDataLayer;
 
     using ScalarMap = std::unordered_map<std::string, AppStateValue>;
     using ArrayMap  = std::unordered_map<std::string, DataTable>;

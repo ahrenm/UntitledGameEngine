@@ -3,7 +3,7 @@
 
 // ── StoreSerializer ─────────────────────────────────────────────────
 // TOML-based serialiser/deserialiser for RuntimeStore.
-// Owned by UDEDataLayer; access via UDEDataLayer::SaveState / LoadState.
+// Owned by UGEDataLayer; access via UGEDataLayer::SaveState / LoadState.
 //
 // Dot-notation keys are expanded into a nested TOML hierarchy on Save:
 //   "ui.console.visible" = 1  →  [ui.console]  /  visible = 1

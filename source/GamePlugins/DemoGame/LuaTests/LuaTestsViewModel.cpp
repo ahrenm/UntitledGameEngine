@@ -25,7 +25,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
             if (newValue == m_stateStop) return;
             m_stateStop = newValue;
             m_model.DirtyVariable("state_stop");
-            if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
                 Data->Transient.Set(KEY_STATE_STOP, AppStateValue{m_stateStop});
         });
 
@@ -43,7 +43,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
         {
             m_coinDirection = "1";
             m_model.DirtyVariable("coin_direction");
-            if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
                 Data->Transient.Set(KEY_COIN_DIRECTION, AppStateValue{1});
         });
 
@@ -52,7 +52,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
         {
             m_coinDirection = "-1";
             m_model.DirtyVariable("coin_direction");
-            if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
                 Data->Transient.Set(KEY_COIN_DIRECTION, AppStateValue{-1});
         });
 
@@ -72,7 +72,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
 
             m_tickId = Lua->AddTickFunction(std::move(Fn), "tickTest");
 
-            if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
                 Data->Transient.Set(KEY_STATE_STOP, AppStateValue{0});
         });
 
@@ -120,7 +120,7 @@ void LuaTestsViewModel::setStateStop(int Value)
 {
     m_stateStop = Value;
     m_model.DirtyVariable("state_stop");
-    if (auto* Data = ServiceLocator::TryGet<UDEDataLayer>())
+    if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
         Data->Transient.Set(KEY_STATE_STOP, AppStateValue{m_stateStop});
 }
 
