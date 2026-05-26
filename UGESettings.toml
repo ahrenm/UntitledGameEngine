@@ -5,7 +5,7 @@ InitScript = "assets/lua/initApp.lua"
 
 [Modules]
 # Platform-independent module names (platform suffix determined automatically)
-Load = ["UIWindows", "DemoGame", "TeaPot3D"]
+# Load = ["YourGameLib", "YourLib"]
 
 [[MountPoints]]
 RealPath = "assets.pak"

@@ -115,40 +115,9 @@ FetchContent_MakeAvailable(RmlUi)
 file(COPY "${rmlui_SOURCE_DIR}/Samples/assets/"
      DESTINATION "${CMAKE_SOURCE_DIR}/assets/rmlui/")
 
-add_executable(untitled WIN32)
-
-# UGECore must be processed before Application so the UGECore target exists
-# when Application's CMakeLists calls target_link_libraries(untitled UGECore).
 add_subdirectory(source/UGECore)
-add_subdirectory(source/Application)
-add_subdirectory(source/GamePlugins)
 
-# Plugin DLLs are loaded dynamically at runtime, so keep explicit build dependencies
-# to ensure building untitled also builds the plugin DLLs.
-add_dependencies(untitled UIWindows DemoGame TeaPot3D)
-
-# Backends path is needed by untitled.exe's main.cpp transitively (via UGECore PUBLIC).
-# UGECore exposes it already, but the explicit include here is harmless insurance.
-target_include_directories(untitled PRIVATE "${rmlui_SOURCE_DIR}/Backends")
-
-# SDL3/physfs/lua/sol2 are pulled in transitively through UGECore (PUBLIC deps).
-# RmlUi is PRIVATE in UGECore (to prevent duplicate-symbol errors in plugin DLLs), but
-# untitled.exe doesn't include RmlUi headers directly so no explicit link is needed.
-# Plugin DLLs (e.g. DemoGame.dll) are built separately and loaded explicitly at runtime
-# by Application's module bootstrapper before UGEApplication::Create().
-target_link_libraries(untitled PRIVATE UGECore)
-
-
-# Pack the assets folder into assets.zip next to the executable
-add_custom_command(TARGET untitled POST_BUILD
-    COMMAND ${CMAKE_COMMAND}
-        -DSOURCE_DIR="${CMAKE_SOURCE_DIR}"
-        -DOUTPUT_ZIP="$<TARGET_FILE_DIR:untitled>/assets.pak"
-        -P "${CMAKE_SOURCE_DIR}/pack_assets.cmake"
-    COMMENT "Packing assets into assets.pak..."
-)
-
-# Standalone target: rebuild assets.zip without recompiling
+# Standalone target: rebuild assets.pak without recompiling
 # Selectable from CLion's build targets dropdown (or: cmake --build . --target pack_assets)
 add_custom_target(pack_assets
     COMMAND ${CMAKE_COMMAND}
@@ -158,45 +127,3 @@ add_custom_target(pack_assets
     COMMENT "Repacking assets.pak..."
 )
 
-# Copy SDL3.dll next to the executable after each build
-add_custom_command(TARGET untitled POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:SDL3::SDL3>
-        $<TARGET_FILE_DIR:untitled>
-)
-
-# Copy SDL3_image.dll next to the executable after each build
-add_custom_command(TARGET untitled POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:SDL3_image::SDL3_image>
-        $<TARGET_FILE_DIR:untitled>
-)
-
-# Copy launch settings TOML next to the executable after each build.
-add_custom_command(TARGET untitled POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/UGESettings.toml"
-        "$<TARGET_FILE_DIR:untitled>/UGESettings.toml"
-    COMMENT "Copying UGESettings.toml..."
-)
-
-# Copy MinGW runtime DLLs next to the executable so the app runs outside the IDE.
-# CLion augments PATH with the MinGW bin dir at launch; Windows Explorer does not.
-# CMAKE_CXX_COMPILER points to g++, so its parent directory is the MinGW bin folder.
-if(MINGW)
-    get_filename_component(MINGW_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
-    foreach(DLL
-        libstdc++-6.dll
-        libgcc_s_seh-1.dll
-        libwinpthread-1.dll
-    )
-        if(EXISTS "${MINGW_BIN_DIR}/${DLL}")
-            add_custom_command(TARGET untitled POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${MINGW_BIN_DIR}/${DLL}"
-                    "$<TARGET_FILE_DIR:untitled>"
-                COMMENT "Copying MinGW runtime: ${DLL}"
-            )
-        endif()
-    endforeach()
-endif()

@@ -104,11 +104,52 @@ generate_export_header(UGECore
     BASE_NAME        UGECORE
 )
 
-# Copy UGECore.dll next to the executable after each build
+# Pack assets next to the DLL after each build
 add_custom_command(TARGET UGECore POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:UGECore>
-        $<TARGET_FILE_DIR:untitled>
-    COMMENT "Copying UGECore.dll..."
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR="${CMAKE_SOURCE_DIR}"
+        -DOUTPUT_ZIP="$<TARGET_FILE_DIR:UGECore>/assets.pak"
+        -P "${CMAKE_SOURCE_DIR}/pack_assets.cmake"
+    COMMENT "Packing assets into assets.pak..."
 )
 
+# Copy SDL3.dll next to the DLL after each build
+add_custom_command(TARGET UGECore POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:SDL3::SDL3>
+        $<TARGET_FILE_DIR:UGECore>
+)
+
+# Copy SDL3_image.dll next to the DLL after each build
+add_custom_command(TARGET UGECore POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:SDL3_image::SDL3_image>
+        $<TARGET_FILE_DIR:UGECore>
+)
+
+# Copy launch settings TOML next to the DLL after each build
+add_custom_command(TARGET UGECore POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/UGESettings.toml"
+        "$<TARGET_FILE_DIR:UGECore>/UGESettings.toml"
+    COMMENT "Copying UGESettings.toml..."
+)
+
+# Copy MinGW runtime DLLs next to the output so it runs outside the IDE
+if(MINGW)
+    get_filename_component(MINGW_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    foreach(DLL
+        libstdc++-6.dll
+        libgcc_s_seh-1.dll
+        libwinpthread-1.dll
+    )
+        if(EXISTS "${MINGW_BIN_DIR}/${DLL}")
+            add_custom_command(TARGET UGECore POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${MINGW_BIN_DIR}/${DLL}"
+                    "$<TARGET_FILE_DIR:UGECore>"
+                COMMENT "Copying MinGW runtime: ${DLL}"
+            )
+        endif()
+    endforeach()
+endif()
