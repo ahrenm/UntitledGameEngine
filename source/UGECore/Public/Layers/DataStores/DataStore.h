@@ -90,9 +90,8 @@ private:
 
 // ── DataStore ─────────────────────────────────────────────────────────────────
 // The single unified store: an unordered_map keyed by Tag (hash cached at
-// construction) to DataEntry (DataValue + DataMeta).  Replaces the old
-// three-store split (State / Transient / Data) with one container whose entries
-// carry their own persistence policy via metadata.
+// construction) to DataEntry (DataValue + DataMeta).  A single container whose
+// entries carry their own persistence policy via metadata.
 //
 // Threading note: all mutations funnel through Set/Remove so a future thread-safe
 // build can wrap them (mutex or deferred queue) without touching call sites.

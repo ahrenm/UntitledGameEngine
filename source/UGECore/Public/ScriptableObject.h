@@ -1,6 +1,6 @@
 ﻿#pragma once
-// ── Backward-compatibility shim ───────────────────────────────────────────────
-// ScriptableObject has been renamed to IScriptableObject.
-// Include <IScriptableObject.h> in new code.
+// ── Compatibility alias ───────────────────────────────────────────────────────
+// ScriptableObject is an alias for IScriptableObject.
+// Prefer including <IScriptableObject.h> directly.
 #include <IScriptableObject.h>
 using ScriptableObject = IScriptableObject;

@@ -269,10 +269,13 @@ void PhysicsLayer::Update()
                 b2Vec2 pos = b2Body_GetPosition(be.bodyId);
                 b2Vec2 vel = b2Body_GetLinearVelocity(be.bodyId);
 
-                data->Store.Set(entry.prefix + ".x",  DataValue{(pos.x - be.halfW) * ppm});
-                data->Store.Set(entry.prefix + ".y",  DataValue{(pos.y - be.halfH) * ppm});
-                data->Store.Set(entry.prefix + ".vx", DataValue{vel.x * ppm});
-                data->Store.Set(entry.prefix + ".vy", DataValue{vel.y * ppm});
+                // Publish position and velocity as atomic Vec2 entries so each
+                // update fires a single notification with both components
+                // consistent (was four separate .x/.y/.vx/.vy sets).
+                data->Store.Set(entry.prefix + ".pos",
+                    DataValue{Vec2{(pos.x - be.halfW) * ppm, (pos.y - be.halfH) * ppm}});
+                data->Store.Set(entry.prefix + ".vel",
+                    DataValue{Vec2{vel.x * ppm, vel.y * ppm}});
             }
         }
     }

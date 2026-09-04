@@ -19,7 +19,7 @@ public:
     [[nodiscard]] static std::expected<std::unique_ptr<UGEApplication>, std::string>
     Create(int Argc, char* Argv[], LaunchSettings LaunchConfig);
 
-    ~UGEApplication() { ServiceLocator::Clear(); }
+    ~UGEApplication();
 
     void Run();
 

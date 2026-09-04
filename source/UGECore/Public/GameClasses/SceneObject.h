@@ -8,9 +8,9 @@
 // ── Scene ─────────────────────────────────────────────────────────────────────
 // Abstract base class for game scenes.
 // Derive in Game.dll, self-register with REGISTER_SCENE, and load at runtime
-// via SDL.LoadScene("scene-name") from Lua or SDLLayer::LoadScene() from C++.
+// via Scene.Load("scene-name") from Lua or SceneManagerLayer::LoadScene() from C++.
 //
-// SDLLayer owns exactly one active scene at a time.  Loading a new scene
+// SceneManagerLayer owns exactly one active scene at a time.  Loading a new scene
 // automatically tears down the previous one.
 //
 // Coordinate system
@@ -30,13 +30,13 @@
 // SDLLayer camera.  Clear it with m_cameraOverride.reset() to restore the
 // SDLLayer default.
 //
-// Event dispatch: SDLLayer calls HandleEvent() for every SDL event during its
-// PollEvents pass, before the event is forwarded into the application dispatch
-// chain.  Return true to consume the event and prevent further propagation;
+// Event dispatch: SceneManagerLayer calls HandleEvent() for every SDL event
+// during the application dispatch chain, before the event reaches lower layers.
+// Return true to consume the event and prevent further propagation;
 // return false to let it continue.
 //
-// If a derived scene also inherits IScriptableObject, SDLLayer will automatically
-// call LuaLayer::Register() on load and Unregister() on unload.
+// If a derived scene also inherits IScriptableObject, SceneManagerLayer will
+// automatically call LuaLayer::Register() on load and Unregister() on unload.
 class SceneObject : public GameObjectBase
 {
 public:

@@ -34,7 +34,7 @@ struct LaunchSettings
     // render calls work in reference pixels regardless of the actual window size.
     int         RefWidth                = 0;
     int         RefHeight               = 0;
-    // ── Physics defaults (used to seed physics.* transient tag branch) ────────
+    // ── Physics defaults (seed the physics.* transient tag branch) ────────────
     // PhysicsLayer reads these on startup and writes them to transient state.
     // Scenes can override individual keys before calling InitPhysics().
     float       PhysicsPixelsPerMeter   = 100.0f;  // world pixels per Box2D metre

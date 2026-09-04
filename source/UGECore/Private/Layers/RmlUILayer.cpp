@@ -75,9 +75,15 @@ RmlUILayer::RmlUILayer(SDL_Window* Window, SDL_Renderer* Renderer)
 
 RmlUILayer::~RmlUILayer()
 {
-    // Destroy all ViewModels before shutting down RmlUi so their destructors
-    // can still access a live context if needed.
-    m_pageViewModels.clear();
+    // Tear the active page down in the correct order before Rml::Shutdown().
+    // unloadCurrentPage() first calls Context::RemoveDataModel() for every
+    // registered model — severing the context's DataViews from the ViewModels —
+    // and only then destroys the ViewModels.  This matters because Rml::Shutdown()
+    // destroys the context, and the debugger plugin's OnContextDestroy runs a
+    // final Context::Update().  If a data-for view still pointed at a freed
+    // ViewModel std::vector member, that update would crash inside
+    // ArrayDefinition::Size.  Removing the data models first makes the update inert.
+    unloadCurrentPage();
     Rml::Shutdown();
 }
 
@@ -180,8 +186,6 @@ void RmlUILayer::processFragments(Rml::ElementDocument* Doc)
 // ── unloadCurrentPage ─────────────────────────────────────────────────────────
 void RmlUILayer::unloadCurrentPage()
 {
-    if (!m_currentPage) return;
-
     // Remove every data model from the context BEFORE destroying ViewModels.
     // RmlUi's Context::LoadDocument() calls Context::Update() internally, which
     // would iterate live DataViews that hold raw pointers into ViewModel member
@@ -189,14 +193,22 @@ void RmlUILayer::unloadCurrentPage()
     // is already destroyed those pointers dangle — resulting in a segfault inside
     // ArrayDefinition::Size.  RemoveDataModel severs the context's reference to
     // those views so no dangling access can occur.
+    //
+    // This runs unconditionally (not gated on m_currentPage): a failed document
+    // load can leave data models registered with no live page, and those must
+    // still be removed before their ViewModels are freed.
     for (const auto& Name : m_pageModelNames)
         m_context->RemoveDataModel(Name);
     m_pageModelNames.clear();
 
     // Now safe to destroy ViewModels — context no longer references their data.
     m_pageViewModels.clear();
-    m_context->UnloadDocument(m_currentPage);
-    m_currentPage = nullptr;
+
+    if (m_currentPage)
+    {
+        m_context->UnloadDocument(m_currentPage);
+        m_currentPage = nullptr;
+    }
 }
 
 // ── LoadDocument (public) ─────────────────────────────────────────────────────
@@ -243,8 +255,11 @@ void RmlUILayer::loadDocumentNow(const std::string& VirtualPath)
     if (!Doc) {
         if (auto* Log = ServiceLocator::TryGet<LoggingLayer>())
             Log->Log("[RmlUILayer] loadDocumentNow failed: " + VirtualPath);
-        // Roll back any ViewModels registered for this failed load.
-        m_pageViewModels.clear();
+        // Roll back any ViewModels registered for this failed load.  m_currentPage
+        // is still null, so unloadCurrentPage() removes their data models from the
+        // context before destroying them — leaving no DataView pointing at freed
+        // ViewModel data for the per-frame Context::Update() to evaluate.
+        unloadCurrentPage();
         return;
     }
 

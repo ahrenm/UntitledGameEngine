@@ -1,17 +1,14 @@
 ﻿#pragma once
 #include "AppLayer.h"
 #include "../IScriptableObject.h"
-#include "../IEventHandler.h"
 #include "../LayerRegistry.h"
 #include "../Camera2D.h"
 #include <SDL3/SDL.h>
 #include <expected>
 #include <functional>
 #include <memory>
-#include <optional>
 #include <string>
 
-class SceneObject;
 
 // ── RAII deleters ─────────────────────────────────────────────────────────────
 struct SDLWindowDeleter   { void operator()(SDL_Window*   P) const { SDL_DestroyWindow(P);   } };
@@ -30,7 +27,7 @@ LoadTextureFromPhysFS(const char* Path);
 
 // ── SDLLayer ──────────────────────────────────────────────────────────────────
 // Load order: 4 — must follow UGEDataLayer (3).
-class SDLLayer : public AppLayer, public IScriptableObject, public IEventHandler
+class SDLLayer : public AppLayer, public IScriptableObject
 {
 public:
     REGISTER_LAYER("sdl", 4.0f, SDLLayer)
@@ -75,31 +72,13 @@ public:
     // Present the completed frame — called by Application::Run() after the Tick pass.
     void EndFrame() const;
 
-    // ── Scene management ──────────────────────────────────────────────────────
-    // Instantiate a registered scene by name, tear down any previously active
-    // scene first.  If the scene implements IScriptableObject it is automatically
-    // registered with LuaLayer.
-    void LoadScene(const char* SceneName);
-
-    // Destroy the active scene (calls ScriptAPILayer::Unregister if applicable).
-    // No-op if no scene is loaded.
-    void UnloadScene();
-
-    [[nodiscard]] SceneObject* ActiveScene() const { return m_activeScene.get(); }
-
     // ── AppLayer ──────────────────────────────────────────────────────────────
-    void Update() override; // polls events, then calls Scene::Update()
-    void Draw(float deltaTime) override; // blits background texture, then calls Scene::Draw(deltaTime)
-
-    // ── IEventHandler ─────────────────────────────────────────────────────────
-    // Forwards the event to the active scene's HandleEvent().
-    // Returns the scene's result; false if no scene is loaded.
-    bool HandleEvent(SDL_Event& Event) override;
+    void Update() override; // polls events
+    void Draw(float deltaTime) override; // blits the background texture
 
     // ── IScriptableObject ─────────────────────────────────────────────────────
     // Registers the "SDL" Lua table with the following functions:
     //   SDL.SetBackground(virtualPath: string)
-    //   SDL.LoadScene(sceneName: string)
     //   SDL.SetCamera(worldX: number, worldY: number)
     //   SDL.MoveCamera(dx: number, dy: number)
     void RegisterObject(sol::state& Lua) override;
@@ -120,9 +99,4 @@ private:
 
     std::shared_ptr<std::function<void(std::string)>> m_logFn;
     std::function<void(SDL_Event&)>                   m_eventHandler;
-
-    std::unique_ptr<SceneObject>     m_activeScene;
-    std::optional<std::string> m_pendingScene;
-
-    void loadSceneNow(const char* SceneName);
 };

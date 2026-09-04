@@ -37,25 +37,17 @@ void PlatformerNamePlateViewModel::RegisterWith(Rml::Context* Context, const cha
             m_characterName = *S;
     m_panelVisible = m_characterName.empty() ? 0 : 1;
 
-    // ── Bind nameplate anchor X from transient store ──────────────────────────
-    m_posXBinding = DATA_BIND(TAG_NAMEPLATE_X.data(), 0.0f,
+    // ── Bind nameplate anchor from transient store ────────────────────────────
+    // A single atomic Vec2 — the callback fires once per frame with both
+    // components consistent, so the plate re-centres exactly once.
+    m_posBinding = DATA_BIND(TAG_NAMEPLATE_POS.data(), Vec2{},
         [this](const Tag&, const DataValue& Val)
         {
-            if (const auto* F = Val.TryAs<float>()) m_anchorX = *F;
+            if (const auto* V = Val.TryAs<Vec2>()) m_anchor = *V;
             updatePosition();
         }, Transient);
-    if (const auto* V = m_posXBinding.GetValue())
-        if (const auto* F = V->TryAs<float>()) m_anchorX = *F;
-
-    // ── Bind nameplate anchor Y from transient store ──────────────────────────
-    m_posYBinding = DATA_BIND(TAG_NAMEPLATE_Y.data(), 0.0f,
-        [this](const Tag&, const DataValue& Val)
-        {
-            if (const auto* F = Val.TryAs<float>()) m_anchorY = *F;
-            updatePosition();
-        }, Transient);
-    if (const auto* V = m_posYBinding.GetValue())
-        if (const auto* F = V->TryAs<float>()) m_anchorY = *F;
+    if (const auto* V = m_posBinding.GetValue())
+        if (const auto* A = V->TryAs<Vec2>()) m_anchor = *A;
 
     // Compute initial position.
     updatePosition();
@@ -68,8 +60,8 @@ void PlatformerNamePlateViewModel::updatePosition()
 {
     const float estimatedW = static_cast<float>(m_characterName.size()) * APPROX_CHAR_W + PADDING_H;
     m_panelWidth = estimatedW;
-    m_panelLeft  = m_anchorX - estimatedW / 2.0f;
-    m_panelTop   = m_anchorY - PLATE_H - GAP_Y;
+    m_panelLeft  = m_anchor.X - estimatedW / 2.0f;
+    m_panelTop   = m_anchor.Y - PLATE_H - GAP_Y;
 
     m_model.DirtyVariable("panel_width");
     m_model.DirtyVariable("panel_left");

@@ -9,6 +9,7 @@
 
 #include <sol/sol.hpp>
 #include "../../toml.hpp"
+#include "Vec2.h"
 
 // ── DataValue ─────────────────────────────────────────────────────────────────
 // Type-erased value holder (Option A) backing every DataStore entry.

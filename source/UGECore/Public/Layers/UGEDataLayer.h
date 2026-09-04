@@ -14,8 +14,7 @@
 
 // ── UGEDataLayer ──────────────────────────────────────────────────────────────
 // Central data layer hosting a single unified DataStore.  Every entry carries its
-// own DataMeta describing persistence policy and provenance, replacing the old
-// three-store split (State / Transient / Data):
+// own DataMeta describing persistence policy and provenance:
 //
 //   - Persistent entries   → meta { Serialize = true,  Source = Serialized }
 //   - Transient entries    → default meta (never serialised, runtime-only)
@@ -290,3 +289,37 @@ namespace DataBindTarget
     DATA_BIND_LOCAL_STRING_IMPL(Binding_, Key_, Member_, Persistent)
 #define DATA_BIND_LOCAL_STRING_4(Binding_, Key_, Member_, Target_) \
     DATA_BIND_LOCAL_STRING_IMPL(Binding_, Key_, Member_, Target_)
+
+
+// ── DATA_BIND_LOCAL_VEC2 ──────────────────────────────────────────────────────
+// Binds a Vec2 key directly to a local Vec2 member: subscribes, then seeds
+// Member_ from the current stored value immediately.  Because a Vec2 is a single
+// atomic entry, the callback fires exactly once per update with both components
+// consistent.
+//
+// Binding_ : DataBinding lvalue to assign into
+// Key_     : const char* / std::string tag
+// Member_  : Vec2 lvalue to keep in sync
+// Target_  : optional (Persistent default / Transient)
+//
+// Example:
+//   DATA_BIND_LOCAL_VEC2(m_anchorBinding, TAG_NAMEPLATE_POS, m_anchor, Transient);
+#define DATA_BIND_LOCAL_VEC2_IMPL(Binding_, Key_, Member_, Target_)                \
+    do {                                                                            \
+        (Binding_) = DATA_BIND_IMPL((Key_), Vec2{},                               \
+            [&](const Tag&, const DataValue& lvVal)                               \
+            {                                                                       \
+                if (const Vec2* lvV = lvVal.TryAs<Vec2>()) (Member_) = *lvV;       \
+            }, Target_);                                                            \
+        if (const DataValue* lvVal = (Binding_).GetValue())                       \
+            if (const Vec2* lvV = lvVal->TryAs<Vec2>()) (Member_) = *lvV;          \
+    } while(0)
+
+#define DATA_BIND_LOCAL_VEC2_GET(_1, _2, _3, _4, NAME, ...) NAME
+#define DATA_BIND_LOCAL_VEC2(...) \
+    DATA_BIND_LOCAL_VEC2_GET(__VA_ARGS__, DATA_BIND_LOCAL_VEC2_4, DATA_BIND_LOCAL_VEC2_3)(__VA_ARGS__)
+#define DATA_BIND_LOCAL_VEC2_3(Binding_, Key_, Member_) \
+    DATA_BIND_LOCAL_VEC2_IMPL(Binding_, Key_, Member_, Persistent)
+#define DATA_BIND_LOCAL_VEC2_4(Binding_, Key_, Member_, Target_) \
+    DATA_BIND_LOCAL_VEC2_IMPL(Binding_, Key_, Member_, Target_)
+

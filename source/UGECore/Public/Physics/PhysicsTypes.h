@@ -3,11 +3,23 @@
 #include <string_view>
 
 // ── Physics transient tag branch ──────────────────────────────────────────────
-// These keys live in UGEDataLayer::Transient under the "physics.*" namespace.
-// PhysicsLayer seeds them from LaunchSettings on startup; scenes can override
-// individual keys before calling InitPhysics() to customise the world.
-// Changing gravity keys while a world is active updates the running simulation
-// immediately via PhysicsLayer's DataBinding subscriptions.
+// These keys live in UGEDataLayer under the "physics.*" namespace (transient
+// meta).  PhysicsLayer seeds them from LaunchSettings on startup; scenes can
+// override individual keys before calling InitPhysics() to customise the world.
+//
+// Runtime tunability contract
+// ---------------------------
+//   LIVE  — physics.gravity.x / physics.gravity.y  (m/s²)
+//           Changing these while a world is active updates the running Box2D
+//           simulation immediately: PhysicsLayer's DataBinding fires and calls
+//           b2World_SetGravity().  Tune from Lua via either the raw store key
+//           (Data.Set('physics.gravity.y', -20)) or the sugar Physics.SetGravity(x, y).
+//
+//   INIT  — physics.pixels_per_meter  (px/m)
+//           Box2D bakes body/shape sizes (in metres) at CreateBody() time, so
+//           PPM cannot change while a world is live.  Writing it is honoured on
+//           the NEXT InitPhysics(); Physics.SetPixelsPerMeter() refuses while a
+//           world exists and logs a warning.
 static constexpr std::string_view TAG_PHYSICS_GRAVITY_X = "physics.gravity.x";
 static constexpr std::string_view TAG_PHYSICS_GRAVITY_Y = "physics.gravity.y";
 static constexpr std::string_view TAG_PHYSICS_PPM       = "physics.pixels_per_meter";
@@ -48,8 +60,8 @@ struct BodyDef
 
 // ── PhysicsWorldCreateParams ──────────────────────────────────────────────────
 // Optional parameters for InitPhysics().  Gravity and pixels-per-metre are NOT
-// here — they are always read from the physics.* transient tag branch, which
-// was seeded from LaunchSettings and may have been overridden by the scene.
+// here — they are always read from the physics.* transient tag branch, which is
+// seeded from LaunchSettings and may be overridden by the scene.
 struct PhysicsWorldCreateParams
 {
     int  SubSteps       = 8;     // Box2D velocity sub-steps per tick (higher = more accurate)

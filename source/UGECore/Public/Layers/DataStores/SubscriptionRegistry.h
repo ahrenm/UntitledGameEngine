@@ -8,9 +8,9 @@
 #include <vector>
 
 // ── SubscriptionRegistry ──────────────────────────────────────────────────────
-// Unifies the two subscription flavours that previously lived in separate places:
-//   - per-key subscriptions  (ported from RuntimeStore::notify)
-//   - prefix subscriptions   (ported from UGEDataLayer::SubscribePrefix)
+// Unifies the two subscription flavours:
+//   - per-key subscriptions
+//   - prefix subscriptions
 //
 // A single monotonically increasing token space is shared by both flavours, so
 // Unsubscribe(token) works uniformly regardless of how the subscription was made.

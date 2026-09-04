@@ -82,9 +82,6 @@ PlatformerScene::PlatformerScene(SDL_Renderer* Renderer, SDL_Window* Window)
         });
     }
 
-    // ── Wire contact callback ─────────────────────────────────────────────────
-    // (no longer needed — coin collection uses a direct AABB check each Update)
-
     // ── Tile world (builds Box2D static/sensor bodies into the active world) ──
     const auto mapKey = dsStr("assets.tile_map_key").value_or("");
     m_world.Build(PLATFORMER_DATA_KEY, mapKey.c_str());

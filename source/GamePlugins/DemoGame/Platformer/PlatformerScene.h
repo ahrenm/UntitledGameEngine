@@ -13,11 +13,11 @@
 // contact-event dispatch.  InitPhysics() is called in the constructor before
 // tiles and the character are created, so all bodies are registered in the
 // same Box2D world.  ShutdownPhysics() is called automatically by
-// SDLLayer::UnloadScene() after the scene (and all its handles) are destroyed.
+// SceneManagerLayer::UnloadScene() after the scene (and all its handles) are destroyed.
 //
-// Boundary bodies (m_leftWall, m_rightWall, m_worldFloor) replace all game-code
-// wall/floor detection: the character no longer clamps its X position or resets
-// on fall-through — Box2D static geometry handles containment.
+// Boundary bodies (m_leftWall, m_rightWall, m_worldFloor) handle all wall/floor
+// containment: Box2D static geometry keeps the character within bounds and
+// catches fall-through.
 class PlatformerScene : public SceneObject, public IScriptableObject
 {
 public:

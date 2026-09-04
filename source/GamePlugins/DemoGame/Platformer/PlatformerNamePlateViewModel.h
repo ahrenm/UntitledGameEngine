@@ -13,7 +13,7 @@
 //   panel_visible  — 1 when character.name is non-empty, else 0
 //   character_name — mirrors persistent "character.name" for display
 //
-// Position anchor (TAG_NAMEPLATE_X / TAG_NAMEPLATE_Y) is top-centre of the
+// Position anchor (TAG_NAMEPLATE_POS, a Vec2) is top-centre of the
 // player sprite written each frame by PlatformerCharacter::Update().
 // The ViewModel offsets leftward by half the estimated rendered label width
 // to visually centre the plate over the character.
@@ -41,13 +41,11 @@ private:
     std::string m_characterName;
 
     // ── Cached anchor position from transient store ───────────────────────────
-    float m_anchorX = 0.0f;
-    float m_anchorY = 0.0f;
+    Vec2 m_anchor{};
 
     // ── Reactive bindings ─────────────────────────────────────────────────────
     DataBinding m_nameBinding;
-    DataBinding m_posXBinding;
-    DataBinding m_posYBinding;
+    DataBinding m_posBinding;
 
     Rml::DataModelHandle m_model;
 

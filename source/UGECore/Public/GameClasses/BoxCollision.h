@@ -14,10 +14,10 @@
 //
 // Edge accessors
 // --------------
-// Direction-neutral names (preferred in new code):
+// Direction-neutral names (preferred):
 //   MinX() / MaxX() — left / right edges
 //   MinY() / MaxY() — bottom / top edges in Y-up world space
-// Legacy screen-space names (kept for backward compatibility):
+// Screen-space alias names:
 //   Left() / Right() — synonyms for MinX() / MaxX()
 //   Top()   = MinY()  ← NOTE: "top" means the SMALLER Y value, i.e. bottom in world space
 //   Bottom()= MaxY()  ← NOTE: "bottom" means the LARGER Y value, i.e. top in world space
@@ -121,7 +121,7 @@ struct BoxCollision
     [[nodiscard]] constexpr float MinY() const { return Y; }       // bottom edge in Y-up
     [[nodiscard]] constexpr float MaxY() const { return Y + H; }   // top edge in Y-up
 
-    // Legacy screen-space aliases (Top = MinY, Bottom = MaxY):
+    // Screen-space aliases (Top = MinY, Bottom = MaxY):
     [[nodiscard]] constexpr float Left()   const { return X; }
     [[nodiscard]] constexpr float Top()    const { return Y; }     // == MinY()
     [[nodiscard]] constexpr float Right()  const { return X + W; }

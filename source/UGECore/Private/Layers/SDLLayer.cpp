@@ -1,10 +1,6 @@
 ﻿#include <Layers/SDLLayer.h>
-#include <Layers/LuaLayer.h>
 #include <Layers/LoggingLayer.h>
 #include <Layers/PhysFSLayer.h>
-#include <Layers/PhysicsLayer.h>
-#include <GameClasses/SceneObject.h>
-#include <SceneRegistry.h>
 #include <ServiceLocator.h>
 #include <UGEApplication.h>
 #include <SDL3_image/SDL_image.h>
@@ -48,9 +44,6 @@ std::expected<std::unique_ptr<AppLayer>, std::string> SDLLayer::Create()
 // ── SDLLayer lifecycle ────────────────────────────────────────────────────────
 SDLLayer::~SDLLayer()
 {
-    // Unload the scene first — it may hold SDL resources that must be freed
-    // before the renderer and window are destroyed.
-    UnloadScene();
     if (m_logFn) SDL_SetLogOutputFunction(nullptr, nullptr);
     m_renderer.reset();
     m_window.reset();
@@ -63,13 +56,11 @@ SDLLayer::SDLLayer(SDLLayer&& other) noexcept
     , m_sdlInit(std::exchange(other.m_sdlInit, false))
     , m_running(other.m_running)
     , m_logFn(std::move(other.m_logFn))
-    , m_activeScene(std::move(other.m_activeScene))
 {}
 
 SDLLayer& SDLLayer::operator=(SDLLayer&& other) noexcept
 {
     if (this != &other) {
-        UnloadScene();
         if (m_logFn) SDL_SetLogOutputFunction(nullptr, nullptr);
         m_renderer.reset();
         m_window.reset();
@@ -79,7 +70,6 @@ SDLLayer& SDLLayer::operator=(SDLLayer&& other) noexcept
         m_sdlInit     = std::exchange(other.m_sdlInit, false);
         m_running     = other.m_running;
         m_logFn       = std::move(other.m_logFn);
-        m_activeScene = std::move(other.m_activeScene);
     }
     return *this;
 }
@@ -144,83 +134,18 @@ void SDLLayer::SetEventHandler(std::function<void(SDL_Event&)> Handler)
     m_eventHandler = std::move(Handler);
 }
 
-// ── IEventHandler ─────────────────────────────────────────────────────────────
-bool SDLLayer::HandleEvent(SDL_Event& Event)
-{
-    if (m_activeScene)
-        return m_activeScene->HandleEvent(Event);
-    return false;
-}
-
 // ── AppLayer ──────────────────────────────────────────────────────────────────
 void SDLLayer::Update()
 {
-    if (m_pendingScene.has_value())
-    {
-        auto Name = std::move(*m_pendingScene);
-        m_pendingScene.reset();
-        loadSceneNow(Name.c_str());
-    }
-
     PollEvents(m_eventHandler);
-    if (m_activeScene)
-        m_activeScene->Update();
 }
 
-void SDLLayer::Draw(float deltaTime)
+void SDLLayer::Draw(float /*deltaTime*/)
 {
     if (m_bgTexture)
         SDL_RenderTexture(m_renderer.get(), m_bgTexture.get(), nullptr, nullptr);
-
-    if (m_activeScene)
-        m_activeScene->Draw(deltaTime);
-    // Physics body debug overlay is rendered by PhysicsLayer::Draw() when
-    // the "debug.show_collision" transient key is set (via Physics.ShowCollision()).
-}
-
-// ── Scene management ──────────────────────────────────────────────────────────
-void SDLLayer::LoadScene(const char* SceneName)
-{
-    m_pendingScene = SceneName;
-}
-
-void SDLLayer::loadSceneNow(const char* SceneName)
-{
-    UnloadScene();
-
-    auto NewScene = SceneRegistry::Instance().Create(SceneName, m_renderer.get(), m_window.get());
-    if (!NewScene)
-    {
-        Log(std::format("[SDL] LoadScene: no scene registered for '{}'", SceneName));
-        return;
-    }
-
-    m_activeScene = std::move(NewScene);
-    m_camera = Camera2D{};
-
-    if (auto* Scriptable = dynamic_cast<IScriptableObject*>(m_activeScene.get()))
-        if (auto* Lua = ServiceLocator::TryGet<LuaLayer>())
-            Lua->Register(Scriptable);
-
-    Log(std::format("[SDL] LoadScene: loaded '{}'", SceneName));
-}
-
-void SDLLayer::UnloadScene()
-{
-    m_pendingScene.reset();
-
-    if (!m_activeScene) return;
-
-    if (auto* Scriptable = dynamic_cast<IScriptableObject*>(m_activeScene.get()))
-        if (auto* Lua = ServiceLocator::TryGet<LuaLayer>())
-            Lua->Unregister(Scriptable);
-
-    // Destroy scene first — all PhysicsBodyHandle members release their b2 bodies here.
-    m_activeScene.reset();
-
-    // Tear down the physics world after all handles have been released.
-    if (auto* Physics = ServiceLocator::TryGet<PhysicsLayer>())
-        Physics->ShutdownPhysics();
+    // Scene geometry is drawn by SceneManagerLayer::Draw() (load order 4.05),
+    // which runs immediately after this layer's Draw().
 }
 
 // ── IScriptableObject ─────────────────────────────────────────────────────────
@@ -233,9 +158,6 @@ void SDLLayer::RegisterObject(sol::state& Lua)
             Log("[SDL] SetBackground error: " + Result.error());
     });
 
-    Sdl.set_function("LoadScene", [this](const std::string& Name) {
-        LoadScene(Name.c_str());
-    });
 
     Sdl.set_function("SetCamera", [this](float WorldX, float WorldY) {
         m_camera.WorldX = WorldX;

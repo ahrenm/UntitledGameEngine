@@ -87,7 +87,7 @@ void PlatformerCharacter::Update()
     m_playerX = bodyPos.x - COLLISION_X_OFFSET;      // sprite left edge
     m_playerY = bodyPos.y;                            // sprite bottom edge
 
-    // X boundaries and fall containment are now handled by Box2D static bodies
+    // X boundaries and fall containment are handled by Box2D static bodies
     // (m_leftWall / m_rightWall / m_worldFloor created in PlatformerScene).
     // Only a last-resort teleport remains in case of extreme physics edge cases.
     if (m_playerY < -(PLAYER_H * 3.0f))
@@ -101,8 +101,7 @@ void PlatformerCharacter::Update()
     {
         const SDL_FPoint Anchor = WorldToScreen(m_playerX + PLAYER_W / 2.0f,
                                                 m_playerY + PLAYER_H);
-        m_dataLayer->Store.Set(TAG_NAMEPLATE_X.data(), DataValue{Anchor.x});
-        m_dataLayer->Store.Set(TAG_NAMEPLATE_Y.data(), DataValue{Anchor.y});
+        m_dataLayer->Store.Set(TAG_NAMEPLATE_POS.data(), DataValue{Vec2{Anchor.x, Anchor.y}});
     }
 }
 

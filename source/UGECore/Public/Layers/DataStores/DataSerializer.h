@@ -2,8 +2,7 @@
 #include "DataStore.h"
 
 // ── DataSerializer ──────────────────────────────────────────────────────────────
-// TOML persistence for a DataStore.  Replaces the old StoreSerializer, which
-// operated on a single-type RuntimeStore.
+// TOML persistence for a DataStore.
 //
 //   Save — walks Store.ForEach and emits only entries whose Meta.Serialize == true,
 //          writing each dotted key as a nested TOML hierarchy.  The leaf value is

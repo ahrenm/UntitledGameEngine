@@ -20,6 +20,7 @@ add_library(UGECore SHARED
     Private/Layers/LuaLayer.cpp
     Private/Layers/PhysFSLayer.cpp
     Private/Layers/SDLLayer.cpp
+    Private/Layers/SceneManagerLayer.cpp
     Private/Layers/RmlUILayer.cpp
     Private/Layers/PhysicsLayer.cpp
     Private/SceneRegistry.cpp

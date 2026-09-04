@@ -62,51 +62,17 @@ void StateAssetsDemoViewModel::RegisterWith(Rml::Context* Context, const char* M
                 Data->Store.Set(std::string(KEY_LOAD_REQUEST), DataValue{1});
         });
 
-    Ctor.BindEventCallback("onPrevious",
-        [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&)
-        {
-            if (auto* SDL = GetSDLLayer())
-                SDL->LoadScene("lua-tests");
-        });
-
-    Ctor.BindEventCallback("onNext",
-        [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&)
-        {
-            if (auto* SDL = GetSDLLayer())
-                SDL->LoadScene("teapot-demo");
-        });
+    BindLoadScene(Ctor, "onPrevious", "lua-tests");
+    BindLoadScene(Ctor, "onNext", "teapot-demo");
 
     m_model = Ctor.GetModelHandle();
 
     // ── Scene → UI: named character fields ────────────────────────────────────
-    // Persistent (default) target so these entries serialise to Game.sav. Each
-    // callback mirrors the stored value into its cached copy and refreshes RML.
-    m_nameBinding = DATA_BIND(KEY_CHARACTER_NAME.data(), std::string{},
-        [this](const Tag&, const DataValue& Val)
-        {
-            if (const auto* S = Val.TryAs<std::string>()) m_characterName = *S;
-            m_model.DirtyVariable("character_name");
-        });
-    if (const auto* V = m_nameBinding.GetValue())
-        if (const auto* S = V->TryAs<std::string>()) m_characterName = *S;
-
-    m_strengthBinding = DATA_BIND(KEY_CHARACTER_STRENGTH.data(), std::string{},
-        [this](const Tag&, const DataValue& Val)
-        {
-            if (const auto* S = Val.TryAs<std::string>()) m_strength = *S;
-            m_model.DirtyVariable("strength");
-        });
-    if (const auto* V = m_strengthBinding.GetValue())
-        if (const auto* S = V->TryAs<std::string>()) m_strength = *S;
-
-    m_manaBinding = DATA_BIND(KEY_CHARACTER_MANA.data(), std::string{},
-        [this](const Tag&, const DataValue& Val)
-        {
-            if (const auto* S = Val.TryAs<std::string>()) m_mana = *S;
-            m_model.DirtyVariable("mana");
-        });
-    if (const auto* V = m_manaBinding.GetValue())
-        if (const auto* S = V->TryAs<std::string>()) m_mana = *S;
+    // Persistent target so these entries serialise to Game.sav. Each macro mirrors
+    // the stored value into its cached copy, dirties the RML var, and seeds it.
+    VM_BIND_MODEL_STRING(m_nameBinding,     KEY_CHARACTER_NAME.data(),     m_characterName, m_model, "character_name");
+    VM_BIND_MODEL_STRING(m_strengthBinding, KEY_CHARACTER_STRENGTH.data(), m_strength,      m_model, "strength");
+    VM_BIND_MODEL_STRING(m_manaBinding,     KEY_CHARACTER_MANA.data(),     m_mana,          m_model, "mana");
 
     // ── Scene → UI: "character.data" container (prefix watch) ─────────────────
     // A single subscription fires for any "character.data.*" child change; we
@@ -123,6 +89,8 @@ void StateAssetsDemoViewModel::RegisterWith(Rml::Context* Context, const char* M
     readContainerIntoUI();   // seed initial display
 
     // ── Scene → UI: status line ───────────────────────────────────────────────
+    // Explicit bind (not VM_BIND_MODEL_STRING) to preserve the "Ready." seed
+    // default when the key is absent.
     m_statusBinding = DATA_BIND(KEY_STATUS.data(), std::string("Ready."),
         [this](const Tag&, const DataValue& Val)
         {
@@ -135,16 +103,7 @@ void StateAssetsDemoViewModel::RegisterWith(Rml::Context* Context, const char* M
             m_statusText = *S;
 
     // ── Scene → UI: load-button visibility (seeded by the scene on construction) ─
-    m_loadBinding = DATA_BIND(KEY_LOAD_VISIBLE.data(), 0,
-        [this](const Tag&, const DataValue& Val)
-        {
-            if (const auto* I = Val.TryAs<int>())
-                m_loadButtonVisible = *I;
-            m_model.DirtyVariable("load_button_visible");
-        }, Transient);
-    if (const auto* V = m_loadBinding.GetValue())
-        if (const auto* I = V->TryAs<int>())
-            m_loadButtonVisible = *I;
+    VM_BIND_MODEL_INT(m_loadBinding, KEY_LOAD_VISIBLE.data(), m_loadButtonVisible, m_model, "load_button_visible", Transient);
 }
 
 // ── pushCharacterToStore ─────────────────────────────────────────────────────────

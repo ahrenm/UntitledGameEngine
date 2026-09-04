@@ -5,8 +5,7 @@
 
 // ── DatasetLoader ───────────────────────────────────────────────────────────────
 // Populates a DataStore from the read-only TOML datasets under assets/DATA/.
-// Replaces the old DatasetStore, folding its two-part (Dataset + Path) key shape
-// into single dotted tags rooted at the file stem:
+// Each dataset is folded into single dotted tags rooted at the file stem:
 //
 //   assets/DATA/platformerData.toml
 //     [physics]

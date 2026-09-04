@@ -31,7 +31,7 @@ private:
 // ── REGISTER_SCENE ────────────────────────────────────────────────────────────
 // Place once inside a public: section of the class body (header) to register
 // against a scene name. Injects a static inline member whose constructor fires
-// at DLL load time, before main() / SDLLayer::LoadScene().
+// at DLL load time, before main() / SceneManagerLayer::LoadScene().
 //
 // REQUIREMENT: must be in a public: section — see REGISTER_VIEWMODEL for the
 // reasoning (static inline member visibility under implicit instantiation rules).

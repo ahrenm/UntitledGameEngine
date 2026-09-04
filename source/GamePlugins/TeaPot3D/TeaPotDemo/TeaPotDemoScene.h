@@ -12,8 +12,8 @@
 // is driven by the transient AppState key TeaPotDemoViewModel::KEY_LIGHT_COLOR,
 // which is written by the colour dropdown in the UI overlay.
 //
-// Activate via SDL.LoadScene("teapot-demo") from Lua or
-// SDLLayer::LoadScene("teapot-demo") from C++.
+// Activate via Scene.Load("teapot-demo") from Lua or
+// SceneManagerLayer::LoadScene("teapot-demo") from C++.
 //
 // The UI overlay is driven by TeaPotDemoViewModel (data-model="teapot-demo").
 class TeaPotDemoScene : public SceneObject

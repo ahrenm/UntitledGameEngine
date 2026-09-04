@@ -25,7 +25,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
             if (newValue == m_stateStop) return;
             m_stateStop = newValue;
             m_model.DirtyVariable("state_stop");
-            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
+            if (auto* Data = GetDataLayer())
                 Data->Store.Set(KEY_STATE_STOP, DataValue{m_stateStop});
         });
 
@@ -43,7 +43,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
         {
             m_coinDirection = "1";
             m_model.DirtyVariable("coin_direction");
-            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
+            if (auto* Data = GetDataLayer())
                 Data->Store.Set(KEY_COIN_DIRECTION, DataValue{1});
         });
 
@@ -52,7 +52,7 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
         {
             m_coinDirection = "-1";
             m_model.DirtyVariable("coin_direction");
-            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
+            if (auto* Data = GetDataLayer())
                 Data->Store.Set(KEY_COIN_DIRECTION, DataValue{-1});
         });
 
@@ -72,23 +72,12 @@ void LuaTestsViewModel::RegisterWith(Rml::Context* Context, const char* ModelNam
 
             m_tickId = Lua->AddTickFunction(std::move(Fn), "tickTest");
 
-            if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
+            if (auto* Data = GetDataLayer())
                 Data->Store.Set(KEY_STATE_STOP, DataValue{0});
         });
 
-    Ctor.BindEventCallback("onPrevious",
-        [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&)
-        {
-            if (auto* SDL = GetSDLLayer())
-                SDL->LoadScene("platformer");
-        });
-
-    Ctor.BindEventCallback("onNext",
-        [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&)
-        {
-            if (auto* SDL = GetSDLLayer())
-                SDL->LoadScene("state-assets-demo");
-        });
+    BindLoadScene(Ctor, "onPrevious", "platformer");
+    BindLoadScene(Ctor, "onNext", "state-assets-demo");
 
     m_model = Ctor.GetModelHandle();
 
@@ -120,7 +109,7 @@ void LuaTestsViewModel::setStateStop(int Value)
 {
     m_stateStop = Value;
     m_model.DirtyVariable("state_stop");
-    if (auto* Data = ServiceLocator::TryGet<UGEDataLayer>())
+    if (auto* Data = GetDataLayer())
         Data->Store.Set(KEY_STATE_STOP, DataValue{m_stateStop});
 }
 

@@ -138,6 +138,22 @@ void UGEDataLayer::RegisterObject(sol::state& Lua)
                     else
                         logMismatch("string");
                 }
+                else if (Cur.TryAs<Vec2>())
+                {
+                    // Marshal a Lua table { x, y } into a Vec2 via its converter.
+                    const ValueConverter* Conv =
+                        ValueConverterRegistry::Instance().Find(typeid(Vec2));
+                    if (Value.is<sol::table>() && Conv && Conv->FromLua)
+                    {
+                        std::any Any = Conv->FromLua(Value);
+                        if (Any.has_value())
+                            Store.Set(Key, DataValue::FromAny(std::move(Any)), Meta);
+                        else
+                            logMismatch("vec2");
+                    }
+                    else
+                        logMismatch("vec2");
+                }
                 else
                 {
                     Log(std::format("Data.Set: '{}' holds a non-scalar type ({}); "
@@ -153,6 +169,18 @@ void UGEDataLayer::RegisterObject(sol::state& Lua)
                     Store.Set(Key, DataValue{Value.as<int>()}, Meta);
                 else if (Value.is<double>())
                     Store.Set(Key, DataValue{static_cast<float>(Value.as<double>())}, Meta);
+                else if (Value.is<sol::table>())
+                {
+                    // A table with x/y fields infers to a Vec2.
+                    const ValueConverter* Conv =
+                        ValueConverterRegistry::Instance().Find(typeid(Vec2));
+                    std::any Any = (Conv && Conv->FromLua) ? Conv->FromLua(Value) : std::any{};
+                    if (Any.has_value())
+                        Store.Set(Key, DataValue::FromAny(std::move(Any)), Meta);
+                    else
+                        Log(std::format("Data.Set: table value for '{}' is not a Vec2 "
+                            "(expected {{ x, y }})", Key));
+                }
                 else
                     Log(std::format("Data.Set: unsupported value type for '{}' ({})",
                         Key, sol::type_name(Value.lua_state(), Value.get_type())));
@@ -205,6 +233,8 @@ void UGEDataLayer::RegisterObject(sol::state& Lua)
                     ValStr = std::format("(float) {}", *F);
                 else if (const std::string* Str = V.TryAs<std::string>())
                     ValStr = std::format("(string) \"{}\"", *Str);
+                else if (const Vec2* Vec = V.TryAs<Vec2>())
+                    ValStr = std::format("(vec2) ({}, {})", Vec->X, Vec->Y);
                 else
                     ValStr = std::format("({})", V.HasValue() ? V.Type().name() : "empty");
 

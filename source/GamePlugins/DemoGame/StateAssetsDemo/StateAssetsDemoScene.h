@@ -6,8 +6,8 @@
 
 // ── StateAssetsDemoScene ───────────────────────────────────────────────────────
 // Demonstrates AppState / asset-pipeline features.
-// Activate via SDL.LoadScene("state-assets-demo") from Lua or
-// SDLLayer::LoadScene("state-assets-demo") from C++.
+// Activate via Scene.Load("state-assets-demo") from Lua or
+// SceneManagerLayer::LoadScene("state-assets-demo") from C++.
 //
 // The UI is driven by StateAssetsDemoViewModel (data-model="state-assets-demo").
 // All save/load business logic lives here in the scene; the ViewModel is a thin

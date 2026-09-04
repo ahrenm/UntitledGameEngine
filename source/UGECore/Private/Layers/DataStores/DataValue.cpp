@@ -94,6 +94,53 @@ ValueConverterRegistry::ValueConverterRegistry()
             return sol::make_object(State, std::any_cast<std::string>(Val));
         },
     });
+
+    // ── Vec2 ─────────────────────────────────────────────────────────────────────
+    // Atomic two-component value.  TOML representation is an inline sub-table
+    //   key = { x = <float>, y = <float> }
+    // and the Lua representation is a table { x = <n>, y = <n> }.
+    Register<Vec2>(ValueConverter{
+        .FromToml = [](const toml::node& Node) -> std::any
+        {
+            if (const auto* Tbl = Node.as_table())
+            {
+                Vec2 V;
+                V.X = static_cast<float>((*Tbl)["x"].value_or(0.0));
+                V.Y = static_cast<float>((*Tbl)["y"].value_or(0.0));
+                return V;
+            }
+            return {};
+        },
+        .ToToml = [](toml::table& Table, const std::string& Key, const std::any& Val)
+        {
+            const auto& V = std::any_cast<const Vec2&>(Val);
+            toml::table Sub;
+            Sub.insert_or_assign("x", static_cast<double>(V.X));
+            Sub.insert_or_assign("y", static_cast<double>(V.Y));
+            Table.insert_or_assign(Key, std::move(Sub));
+        },
+        .FromLua = [](const sol::object& Obj) -> std::any
+        {
+            if (Obj.is<sol::table>())
+            {
+                sol::table T = Obj.as<sol::table>();
+                Vec2 V;
+                V.X = T.get_or("x", T.get_or(1, 0.0f));
+                V.Y = T.get_or("y", T.get_or(2, 0.0f));
+                return V;
+            }
+            return {};
+        },
+        .ToLua = [](sol::this_state State, const std::any& Val) -> sol::object
+        {
+            const auto& V = std::any_cast<const Vec2&>(Val);
+            sol::state_view Lua(State);
+            sol::table T = Lua.create_table();
+            T["x"] = V.X;
+            T["y"] = V.Y;
+            return T;
+        },
+    });
 }
 
 // ── MakeDataValueFromToml ───────────────────────────────────────────────────────
@@ -117,7 +164,7 @@ DataValue MakeDataValueFromToml(const toml::node& Node)
             return DataValue::FromAny(Conv->FromToml(Node));
         break;
     case toml::node_type::boolean:
-        // No dedicated bool converter — widen to int (matches legacy behaviour).
+        // No dedicated bool converter — widen to int.
         return DataValue(Node.value_or<bool>(false) ? 1 : 0);
     default:
         break;

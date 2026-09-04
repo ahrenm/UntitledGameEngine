@@ -3,8 +3,8 @@
 #include <string>
 
 // ── DataSource ────────────────────────────────────────────────────────────────
-// Provenance of a stored entry.  Replaces the "which store did this live in"
-// distinction of the old three-store design with per-entry metadata.
+// Provenance of a stored entry.  Each entry records where it came from via
+// per-entry metadata.
 enum class DataSource : uint8_t
 {
     Unknown = 0,

@@ -1,6 +1,7 @@
 ﻿#include <UGEApplication.h>
 #include <Layers/LoggingLayer.h>
 #include <Layers/LuaLayer.h>
+#include <Layers/SceneManagerLayer.h>
 #include <ServiceLocator.h>
 #include <IEventHandler.h>
 #include <LayerRegistry.h>
@@ -12,6 +13,19 @@
 
 // Static definition
 LaunchSettings UGEApplication::Settings;
+
+UGEApplication::~UGEApplication()
+{
+    // Tear the active scene down while every layer it depends on is still alive.
+    // Scenes may own SDL textures (freed via SDLLayer's renderer) and physics
+    // bodies (freed via PhysicsLayer).  Doing this here — before the m_layers
+    // vector destroys its elements — preserves the ordering guarantees that used
+    // to be provided by SDLLayer owning the scene directly.
+    if (auto* SceneMgr = ServiceLocator::TryGet<SceneManagerLayer>())
+        SceneMgr->UnloadScene();
+
+    ServiceLocator::Clear();
+}
 
 std::expected<std::unique_ptr<UGEApplication>, std::string>
 UGEApplication::Create(int Argc, char* Argv[], LaunchSettings LaunchConfig)

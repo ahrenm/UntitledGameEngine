@@ -8,25 +8,14 @@ void PlatformerHudViewModel::RegisterWith(Rml::Context* Context, const char* Mod
     auto Ctor = Context->CreateDataModel(ModelName);
     Ctor.Bind("score", &m_score);
 
-    Ctor.BindEventCallback("onNext",
-        [this](Rml::DataModelHandle, Rml::Event&, const Rml::VariantList&) {
-            //if (onNext)
-            //    onNext();
-                GetSDLLayer()->LoadScene("lua-tests");
-        });
+    BindLoadScene(Ctor, "onNext", "lua-tests");
 
     m_model = Ctor.GetModelHandle();
 
-    // -- Score � transient AppState subscription -------------------------------
-    // Subscribe to "Platformer2d.Score" so SetScore() is called whenever the
-    // scene updates the store.
-    m_scoreBinding = DATA_BIND(PlatformerHudViewModel::SCORE_KEY, 0,
-        [this](const Tag&, const DataValue& Val) {
-            if (const int* I = Val.TryAs<int>()) SetScore(*I);
-        }, Transient);
-    // Initialise from whatever value is already in the store.
-    if (const auto* Val = m_scoreBinding.GetValue())
-        if (const int* I = Val->TryAs<int>()) SetScore(*I);
+    // ── Score — transient AppState subscription ───────────────────────────────
+    // Subscribe to SCORE_KEY so the HUD refreshes whenever the scene updates the
+    // store; the macro also seeds m_score from the current value.
+    VM_BIND_MODEL_INT(m_scoreBinding, SCORE_KEY, m_score, m_model, "score", Transient);
 
     // Make this instance retrievable via ServiceLocator::Get<PlatformerHudViewModel>().
     ServiceLocator::Provide(this);

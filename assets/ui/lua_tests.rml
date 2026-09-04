@@ -178,11 +178,11 @@
         </tr>
         <tr>
             <td class="col-notes">Switch scene!</td>
-            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="SDL.LoadScene('platformer')"/></td>
+            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Scene.Load('platformer')"/></td>
         </tr>
         <tr>
             <td class="col-notes">From platformer: play with physics<br/>LUA->Game State->Game c++</td>
-            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.Set('plat2d.physics.gravity', 10)"/></td>
+            <td class="col-cmd"><input class="copyable" type="text" readonly="readonly" value="Data.Set('physics.gravity.y', -80)"/></td>
         </tr>
         <tr>
             <td class="col-notes">From platformer: Trigger game actions<br/>Lua->Game c++</td>
