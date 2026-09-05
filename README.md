@@ -1,4 +1,4 @@
-﻿# Untitled Game Engine (BUILD CURRENTLY BROKEN)
+﻿# Untitled Game Engine
 
 The Untitled Game Engine is an experimental 2d game engine/framework written entirely by AI, predominantly Claude
 
