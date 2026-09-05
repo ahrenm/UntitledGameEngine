@@ -42,13 +42,13 @@ RmlUILayer::Create()
     if (!SdlLayer)
         return std::unexpected("RmlUILayer::Create: SDLLayer not found in ServiceLocator");
 
-    SDL_Window* Window = SdlLayer->Window();
-    SDL_Renderer* Renderer = SdlLayer->Renderer();
+    SDL_Window*    Window = SdlLayer->Window();
+    SDL_GPUDevice* Device = SdlLayer->Device();
 
-    if (!Window || !Renderer)
-        return std::unexpected("RmlUILayer::Create: SDLLayer window or renderer is null");
+    if (!Window || !Device)
+        return std::unexpected("RmlUILayer::Create: SDLLayer window or GPU device is null");
 
-    auto Layer = std::unique_ptr<RmlUILayer>(new RmlUILayer(Window, Renderer));
+    auto Layer = std::unique_ptr<RmlUILayer>(new RmlUILayer(Window, Device));
 
     if (auto* Log = ServiceLocator::TryGet<LoggingLayer>())
         Layer->SetLogFunction(Log->MakeSink());
@@ -57,9 +57,9 @@ RmlUILayer::Create()
 }
 
 // ── RmlUILayer ────────────────────────────────────────────────────────────────
-RmlUILayer::RmlUILayer(SDL_Window* Window, SDL_Renderer* Renderer)
+RmlUILayer::RmlUILayer(SDL_Window* Window, SDL_GPUDevice* Device)
     : m_systemInterface(Window)
-    , m_renderInterface(Renderer)
+    , m_renderInterface(Device, Window)
     , m_window(Window)
 {
     Rml::SetFileInterface(&m_fileInterface);
@@ -85,6 +85,10 @@ RmlUILayer::~RmlUILayer()
     // ArrayDefinition::Size.  Removing the data models first makes the update inert.
     unloadCurrentPage();
     Rml::Shutdown();
+    // Release the GPU pipelines, sampler, and vertex/index buffers owned by the
+    // render interface. Called after Rml::Shutdown() so any texture/geometry
+    // releases RmlUi issues during teardown run first.
+    m_renderInterface.Shutdown();
 }
 
 std::string RmlUILayer::NormalizeDocumentSlug(std::string_view VirtualPath)
@@ -283,23 +287,20 @@ void RmlUILayer::SetLogFunction(const std::function<void(Rml::String)>& Fn)
 void RmlUILayer::RmlUpdate()   { m_context->Update();              }
 void RmlUILayer::BeginFrame()
 {
-    // RenderInterface_SDL::BeginFrame() resets the viewport and blend mode but
-    // also calls SDL_RenderClear, which would wipe the background already drawn
-    // by SDLLayer::Draw().  We replicate only the two state-setup calls here.
-    SDL_SetRenderViewport(SDL_GetRenderer(m_window), nullptr);
-    SDL_SetRenderDrawBlendMode(SDL_GetRenderer(m_window), SDL_BLENDMODE_BLEND);
+    // Hand RmlUi's render interface the shared per-frame GPU state owned by
+    // SDLLayer. RmlUi records into the same command buffer / swapchain texture
+    // with a LOAD render pass, compositing its documents over the background,
+    // sprites, and 3D content already drawn earlier in the frame.
+    auto* Sdl = ServiceLocator::TryGet<SDLLayer>();
+    if (!Sdl || !Sdl->IsFrameActive())
+        return;
+
+    const GpuFrameContext Frame = Sdl->Frame();
+    m_renderInterface.BeginFrame(Frame.CommandBuffer, Frame.SwapchainTexture,
+                                 Frame.Width, Frame.Height);
 }
 void RmlUILayer::RenderFrame() { m_context->Render();              }
 void RmlUILayer::EndFrame()    { m_renderInterface.EndFrame();     }
-
-void RmlUILayer::Frame(SDL_Renderer* Renderer, SDL_Texture* BgTexture)
-{
-    m_context->Update();
-    m_renderInterface.BeginFrame();
-    SDL_RenderTexture(Renderer, BgTexture, nullptr, nullptr);
-    m_context->Render();
-    m_renderInterface.EndFrame();
-}
 
 void RmlUILayer::ProcessEvent(SDL_Window* Window, SDL_Event& Event)
 {
@@ -344,6 +345,12 @@ void RmlUILayer::Update()
 
 void RmlUILayer::Draw(float /*deltaTime*/)
 {
+    // Skip UI recording when no swapchain image is available this frame
+    // (e.g. minimized window); BeginFrame() would have no valid GPU context.
+    auto* Sdl = ServiceLocator::TryGet<SDLLayer>();
+    if (!Sdl || !Sdl->IsFrameActive())
+        return;
+
     BeginFrame();
     RenderFrame();
     EndFrame();

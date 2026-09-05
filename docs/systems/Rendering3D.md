@@ -1,8 +1,9 @@
 # 3D Rendering (TeaPot3D)
 
-`Render3DLayer` is an **optional, CPU-rasterised** 3D viewport. It lives in the **`TeaPot3D.dll`
-plugin** (load order 4.5), **not** in UGECore. It is a no-op until `Activate()` and fetches its
-`SDL_Renderer` via `ServiceLocator`.
+`Render3DLayer` is an **optional** 3D viewport rendered through a real **SDL_GPU** pipeline
+(vertex + fragment shaders, depth buffer). It lives in the **`TeaPot3D.dll` plugin** (load order
+4.5), **not** in UGECore. It is a no-op until `Activate()` and obtains the `SDL_GPUDevice*`,
+per-frame command buffer, and swapchain texture from `SDLLayer` via `ServiceLocator`.
 
 Related: [Overview.md](../architecture/Overview.md) ·
 [LuaApiReference.md](../reference/LuaApiReference.md)

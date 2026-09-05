@@ -1,6 +1,6 @@
 ﻿#include <TeaPotDemoScene.h>
 #include <TeaPotDemoViewModel.h>
-#include <Render3DLayer/Render3DLayer.h>
+#include <Render3DObjectLayer/Render3DObjectLayer.h>
 #include <Layers/SDLLayer.h>
 #include <Layers/RmlUILayer.h>
 #include <ServiceLocator.h>
@@ -20,12 +20,12 @@ namespace {
 }
 
 // ── Constructor ───────────────────────────────────────────────────────────────
-TeaPotDemoScene::TeaPotDemoScene(SDL_Renderer* Renderer, SDL_Window* Window)
+TeaPotDemoScene::TeaPotDemoScene(Renderer2D* Renderer, SDL_Window* Window)
     : SceneObject(Renderer, Window)
 {
 
     // ── 3-D setup ─────────────────────────────────────────────────────────────
-    if (auto* R = ServiceLocator::TryGet<Render3DLayer>())
+    if (auto* R = ServiceLocator::TryGet<Render3DObjectLayer>())
     {
         // Camera: slightly above and behind, looking at the origin.
         R->SetCamera(0.0f, 2.5f, 8.0f,
@@ -75,8 +75,8 @@ TeaPotDemoScene::TeaPotDemoScene(SDL_Renderer* Renderer, SDL_Window* Window)
 TeaPotDemoScene::~TeaPotDemoScene()
 {
     // Release all 3-D resources when the scene is torn down so the next scene
-    // starts with a clean Render3DLayer state.
-    if (auto* R = ServiceLocator::TryGet<Render3DLayer>())
+    // starts with a clean Render3DObjectLayer state.
+    if (auto* R = ServiceLocator::TryGet<Render3DObjectLayer>())
         R->Deactivate();
 }
 
@@ -85,7 +85,7 @@ TeaPotDemoScene::~TeaPotDemoScene()
 // white if the name is not found.
 void TeaPotDemoScene::applyLightColor(const std::string& ColorName)
 {
-    auto* R = ServiceLocator::TryGet<Render3DLayer>();
+    auto* R = ServiceLocator::TryGet<Render3DObjectLayer>();
     if (!R) return;
 
     for (const auto& Entry : COLOR_TABLE)
@@ -110,7 +110,7 @@ void TeaPotDemoScene::Update()
 // ── Draw ──────────────────────────────────────────────────────────────────────
 void TeaPotDemoScene::Draw(float DeltaTime)
 {
-    if (auto* R = ServiceLocator::TryGet<Render3DLayer>())
+    if (auto* R = ServiceLocator::TryGet<Render3DObjectLayer>())
     {
         // Rotate the teapot 30 degrees per second around the Y-axis.
         m_yaw += DeltaTime * 30.0f;
@@ -118,4 +118,3 @@ void TeaPotDemoScene::Draw(float DeltaTime)
         R->SetModelRotation(0.0f, m_yaw, 0.0f);
     }
 }
-

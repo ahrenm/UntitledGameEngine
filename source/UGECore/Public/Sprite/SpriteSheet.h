@@ -1,7 +1,10 @@
 ﻿#pragma once
-#include <Layers/SDLLayer.h>   // UniqueTexture, LoadTextureFromPhysFS
+#include <Layers/SDLLayer.h>   // GpuTexture, LoadTextureFromPhysFS
+#include <Render/GpuTexture.h>
 #include <expected>
 #include <string>
+
+class Renderer2D;
 
 // ── SpriteSheet ───────────────────────────────────────────────────────────────
 // Owns a single texture and divides it into a uniform grid of equal-sized frames.
@@ -15,10 +18,10 @@
 // Drawing a single frame (e.g. inside Tick()):
 //
 //   SDL_FRect Dest{ x * SX, y * SY, PLAYER_W * SX, PLAYER_H * SY };
-//   m_playerSheet.Draw(m_renderer, FrameIndex, Dest);
+//   m_playerSheet.Draw(m_renderer2D, FrameIndex, Dest);
 //
 // Coordinate convention: FrameRect() returns source coordinates in texture
-// pixels (same units expected by SDL_RenderTexture's srcRect parameter).
+// pixels (the source-rect units used by the Renderer2D textured-quad draw).
 class SpriteSheet
 {
 public:
@@ -49,11 +52,11 @@ public:
     // Returns a zero rect if FrameIndex is out of range.
     [[nodiscard]] SDL_FRect FrameRect(int FrameIndex) const;
 
-    // Render frame FrameIndex scaled to fit Dest on the given renderer.
+    // Render frame FrameIndex scaled to fit Dest through the Core Renderer2D.
     // FlipMode defaults to SDL_FLIP_NONE; pass SDL_FLIP_HORIZONTAL to mirror
     // left↔right (e.g. a walking sprite changing direction), or
     // SDL_FLIP_VERTICAL to mirror top↔bottom.
-    void Draw(SDL_Renderer* Renderer, int FrameIndex, const SDL_FRect& Dest,
+    void Draw(Renderer2D& Renderer, int FrameIndex, const SDL_FRect& Dest,
               SDL_FlipMode FlipMode = SDL_FLIP_NONE) const;
 
     // Total number of frames derived from texture dimensions and frame size.
@@ -74,10 +77,10 @@ public:
     [[nodiscard]] int RenderedH() const { return m_frameH - 2 * m_paddingV; }
 
     // Returns true if this sheet holds a valid texture.
-    [[nodiscard]] bool IsValid() const { return m_texture != nullptr; }
+    [[nodiscard]] bool IsValid() const { return m_texture.IsValid(); }
 
 private:
-    UniqueTexture m_texture{ nullptr };
+    GpuTexture    m_texture;
     int           m_frameW   = 0;
     int           m_frameH   = 0;
     int           m_paddingH = 0;   // horizontal pixels between columns

@@ -8,7 +8,7 @@
 
 using namespace StateAssetsDemoKeys;   // KEY_* shared DataStore keys
 
-StateAssetsDemoScene::StateAssetsDemoScene(SDL_Renderer* Renderer, SDL_Window* Window)
+StateAssetsDemoScene::StateAssetsDemoScene(Renderer2D* Renderer, SDL_Window* Window)
     : SceneObject(Renderer, Window)
 {
     GetSDLLayer()->SetBackground("assets/dataBG.jpg");

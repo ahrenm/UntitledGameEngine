@@ -8,7 +8,7 @@
 // Data model for the Teapot Demo overlay (data-model="teapot-demo").
 // Provides navigation and a light-colour selector that writes the chosen colour
 // name to the transient AppState key KEY_LIGHT_COLOR so TeaPotDemoScene can
-// react and call Render3DLayer::SetLightColor().
+// react and call Render3DObjectLayer::SetLightColor().
 class TeaPotDemoViewModel : public ViewModel
 {
 public:

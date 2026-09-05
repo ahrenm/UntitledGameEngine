@@ -5,6 +5,8 @@
 #include <SDL3/SDL.h>
 #include <optional>
 
+class Renderer2D;
+
 // ── Scene ─────────────────────────────────────────────────────────────────────
 // Abstract base class for game scenes.
 // Derive in Game.dll, self-register with REGISTER_SCENE, and load at runtime
@@ -18,7 +20,7 @@
 // All game-object positions are expressed in Y-up world pixels.
 // (0, 0) = bottom-left of the reference area; X right, Y up.
 // Use the protected WorldRect() / WorldToScreen() / ScreenToWorld() helpers
-// to convert to SDL screen-space rects before issuing SDL_Render* calls.
+// to convert to screen-space rects before issuing Renderer2D draw calls.
 // The default camera (FlipY=true, zero offset, zoom=1) makes this transparent —
 // if you never set m_cameraOverride the scene behaves exactly as if it were
 // rendering in reference-pixel screen space, but Y is flipped.
@@ -40,15 +42,15 @@
 class SceneObject : public GameObjectBase
 {
 public:
-    SceneObject(SDL_Renderer* Renderer, SDL_Window* Window)
-        : m_renderer(Renderer), m_window(Window) {}
+    SceneObject(Renderer2D* Renderer, SDL_Window* Window)
+        : m_renderer2D(Renderer), m_window(Window) {}
 
     virtual ~SceneObject() = default;
 
     // Called once per frame before Draw() — use for logic and state updates.
     virtual void Update() {}
 
-    // Called once per frame during the render pass — use for SDL draw calls.
+    // Called once per frame during the render pass — use for Renderer2D draw calls.
     // DeltaTime is elapsed seconds since the previous Draw() call.
     virtual void Draw(float /*deltaTime*/) {}
 
@@ -57,7 +59,7 @@ public:
     virtual bool HandleEvent(SDL_Event& /*Event*/) { return false; }
 
 protected:
-    SDL_Renderer* m_renderer = nullptr;  // non-owning; lifetime is SDLLayer's
+    Renderer2D*   m_renderer2D = nullptr;  // non-owning; lifetime is SDLLayer's
     SDL_Window*   m_window   = nullptr;  // non-owning; lifetime is SDLLayer's
 
     // Optional per-scene camera override.  When set, WorldRect() and friends use
@@ -68,7 +70,7 @@ protected:
     // ── Coordinate helpers ────────────────────────────────────────────────────
     // These helpers apply the effective camera transform (override if set,
     // else SDLLayer's global camera) to convert Y-up world positions to the
-    // SDL screen-space SDL_FRect / SDL_FPoint expected by SDL_Render* calls.
+    // screen-space SDL_FRect / SDL_FPoint expected by Renderer2D draw calls.
 
     // Convert a Y-up world AABB (bottom-left origin) to a screen-space SDL_FRect.
     // wx, wy = bottom-left corner in world space; w, h = size.

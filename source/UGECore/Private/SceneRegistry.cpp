@@ -18,7 +18,7 @@ bool SceneRegistry::HasFactory(std::string_view SceneName) const
 }
 
 std::unique_ptr<SceneObject> SceneRegistry::Create(std::string_view SceneName,
-                                              SDL_Renderer*    Renderer,
+                                              Renderer2D*      Renderer,
                                               SDL_Window*      Window) const
 {
     const auto It = m_factories.find(std::string(SceneName));

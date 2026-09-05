@@ -23,7 +23,7 @@ class PlatformerScene : public SceneObject, public IScriptableObject
 public:
     REGISTER_SCENE("platformer", PlatformerScene)
 
-    PlatformerScene(SDL_Renderer* Renderer, SDL_Window* Window);
+    PlatformerScene(Renderer2D* Renderer, SDL_Window* Window);
 
     void Update()                      override;
     void Draw(float deltaTime)         override;

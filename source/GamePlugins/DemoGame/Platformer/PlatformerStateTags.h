@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <Physics/PhysicsTypes.h>   // TAG_PHYSICS_GRAVITY_Y, TAG_PHYSICS_PPM
 #include <string_view>
 
 // ── Platformer-specific transient tags ────────────────────────────────────────

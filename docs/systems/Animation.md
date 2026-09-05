@@ -2,7 +2,7 @@
 
 `AnimationControllerBase` is a generic, **TOML-driven** animation controller for game objects.
 It manages a named registry of `SpriteSheet` + `AnimatedSprite` pairs and renders the currently
-active clip through a bound `SDL_Renderer`. Derive from it in a game plugin to add state-driven
+active clip through a bound `Renderer2D`. Derive from it in a game plugin to add state-driven
 animation selection (e.g. idle/walk/jump).
 
 Related: [SpriteSystem.md](SpriteSystem.md) · [DataStore.md](DataStore.md) ·
@@ -24,12 +24,12 @@ pointers never dangle across map insertions.
 
 ## Lifecycle
 
-1. Construct with the `SDL_Renderer*` that will be used for all `Draw` calls.
+1. Construct with the `Renderer2D*` that will be used for all `Draw` calls.
 2. Call `LoadAnimation()` once per clip (reads from `UGEDataLayer`).
 3. Each frame: call `Update()` then `Tick(DeltaTime)`; call `Draw(Rect, Flip)` to render.
 
 ```cpp
-explicit AnimationControllerBase(SDL_Renderer* Renderer);
+explicit AnimationControllerBase(Renderer2D* Renderer);
 ```
 
 ---

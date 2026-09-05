@@ -5,23 +5,23 @@
 #include <unordered_map>
 
 class SceneObject;
-struct SDL_Renderer;
+class Renderer2D;
 struct SDL_Window;
 
 // ── SceneRegistry ─────────────────────────────────────────────────────────────
 // Singleton mapping scene name strings to Scene factory functions.
-// Factories receive the renderer and window at instantiation time.
+// Factories receive the Core Renderer2D and window at instantiation time.
 class SceneRegistry
 {
 public:
-    using Factory = std::function<std::unique_ptr<SceneObject>(SDL_Renderer*, SDL_Window*)>;
+    using Factory = std::function<std::unique_ptr<SceneObject>(Renderer2D*, SDL_Window*)>;
 
     static SceneRegistry& Instance();
 
     void RegisterFactory(std::string_view SceneName, Factory FactoryFn);
     [[nodiscard]] bool HasFactory(std::string_view SceneName) const;
     [[nodiscard]] std::unique_ptr<SceneObject> Create(std::string_view SceneName,
-                                                SDL_Renderer*    Renderer,
+                                                Renderer2D*      Renderer,
                                                 SDL_Window*      Window) const;
 
 private:
@@ -40,7 +40,7 @@ private:
 //   class MyScene : public Scene {
 //   public:
 //       REGISTER_SCENE("my-scene", MyScene)
-//       MyScene(SDL_Renderer* R, SDL_Window* W) : Scene(R, W) {}
+//       MyScene(Renderer2D* R, SDL_Window* W) : Scene(R, W) {}
 //       void Draw(float DeltaTime) override;
 //   };
 #define REGISTER_SCENE(SceneName, Type)                                          \
@@ -48,7 +48,7 @@ private:
         _SceneRegistrar() {                                                       \
             SceneRegistry::Instance().RegisterFactory(                            \
                 SceneName,                                                        \
-                [](SDL_Renderer* R, SDL_Window* W) {                             \
+                [](Renderer2D* R, SDL_Window* W) {                               \
                     return std::make_unique<Type>(R, W);                          \
                 });                                                               \
         }                                                                         \

@@ -15,14 +15,19 @@ Related: [architecture/FrameLoop.md](../architecture/FrameLoop.md) ·
 
 ## Feasibility Assessment — what we *think* we can and can't do
 
+> **Note:** this feasibility analysis predates the SDL_GPU migration (see
+> [../sprints/SDL_GPU_Migration.md](../sprints/SDL_GPU_Migration.md)). The render stack now runs on
+> an `SDL_GPUDevice` + swapchain instead of `SDL_Renderer`, so the concrete strategies below
+> (especially "keep the software renderer") need revisiting before implementation.
+
 The engine's render stack is tightly coupled to SDL and RmlUi:
 
 - [`SDLLayer::Create()`](../../source/UGECore/Private/Layers/SDLLayer.cpp) hard-requires
-  `SDL_Init(SDL_INIT_VIDEO)`, `SDL_CreateWindow`, and `SDL_CreateRenderer`. There is currently no
-  path that produces a null window/renderer.
+  `SDL_Init(SDL_INIT_VIDEO)`, `SDL_CreateWindow`, `SDL_CreateGPUDevice`, and
+  `SDL_ClaimWindowForGPUDevice`. There is currently no path that produces a null window/device.
 - [`RmlUILayer::Create()`](../../source/UGECore/Private/Layers/RmlUILayer.cpp) fetches the
-  `SDL_Window*` and `SDL_Renderer*` from `SDLLayer` and **fails** if either is null. Its
-  `RenderInterface_SDL` and `SystemInterface_SDL` bind directly to those handles, and the ctor
+  `SDL_Window*` and `SDL_GPUDevice*` from `SDLLayer` and **fails** if either is null. Its
+  `RenderInterface_SDL_GPU` and `SystemInterface_SDL` bind directly to those handles, and the ctor
   calls `SDL_GetWindowSize`.
 
 **Conclusion:** we cannot simply null out video and keep RmlUi. Two viable strategies:
@@ -33,10 +38,10 @@ Keep the full stack alive but invisible:
 
 - Create the window **hidden**: add `SDL_WINDOW_HIDDEN` to the `SDL_CreateWindow` flags when
   `LaunchSettings::Headless` is set.
-- Keep the SDL renderer (software renderer is fine and display-independent). RmlUi initializes and
-  runs normally against it — **UI stays under test**.
-- Suppress presentation: `SDLLayer::EndFrame()` skips `SDL_RenderPresent` in headless mode (the
-  GPU/compositor never sees a frame; all `Update()`/`Draw()` logic still executes).
+- Keep the GPU device (a headless/offscreen swapchain or a render-to-texture target is
+  display-independent). RmlUi initializes and runs normally against it — **UI stays under test**.
+- Suppress presentation: in headless mode `SDLLayer::EndFrame()` submits the command buffer without
+  a visible swapchain (the compositor never sees a frame; all `Update()`/`Draw()` logic still runs).
 - Optionally set the SDL `dummy` video driver (`SDL_HINT_VIDEO_DRIVER = "dummy"`) for fully
   display-server-independent runs — chiefly relevant to Linux CI.
 

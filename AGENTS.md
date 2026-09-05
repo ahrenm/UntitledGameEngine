@@ -39,10 +39,10 @@ untitled.exe (Application)  ->  UGECore (libUGECore.dll)  <-  Plugins: UIWindows
 | 1 | `LoggingLayer` | Log-line buffer; pushed first. |
 | 2 | `PhysFSLayer` | Virtual filesystem (assets.pak + OVERRIDE/assets). |
 | 3 | `UGEDataLayer` | Unified metadata-driven `DataStore` (pushed by default). |
-| 4.0 | `SDLLayer` | Window, renderer, background, event loop, 2-D camera. |
+| 4.0 | `SDLLayer` | Window, SDL_GPU device + swapchain, `Renderer2D`, event loop, 2-D camera. |
 | 4.05 | `SceneManagerLayer` | Owns the single active `Scene`. |
 | 4.1 | `PhysicsLayer` | Box2D world; step + contacts + debug draw. |
-| 4.5 | `Render3DLayer` | (plugin, TeaPot3D) CPU-rasterised 3D viewport. |
+| 4.5 | `Render3DObjectLayer` | (plugin, TeaPot3D) CPU-rasterised 3D viewport. |
 | 5 | `LuaLayer` | sol2 VM + scriptable-object registry. |
 | 6 | `RmlUILayer` | RmlUi context, documents, ViewModels. |
 | 10+ | Plugin layers | Registered in plugin headers. |
@@ -145,6 +145,7 @@ touches that system.
 |---|---|
 | [docs/DataStore_Design.md](docs/DataStore_Design.md) | Authoritative `DataStore` design record. |
 | [docs/DataStore_Refactor_Tasks.md](docs/DataStore_Refactor_Tasks.md) | `DataStore` refactor task breakdown. |
+| [docs/sprints/SDL_GPU_Migration.md](docs/sprints/SDL_GPU_Migration.md) | Phased migration plan: SDL 2D renderer → SDL_GPU (RmlUi, Renderer2D, TeaPot3D). |
 
 ### Testing (design record — implementation deferred)
 | Doc | Read when... |

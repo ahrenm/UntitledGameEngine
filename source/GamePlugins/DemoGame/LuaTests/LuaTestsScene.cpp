@@ -3,7 +3,7 @@
 #include <Layers/UGEDataLayer.h>
 #include <ServiceLocator.h>
 
-LuaTestsScene::LuaTestsScene(SDL_Renderer* Renderer, SDL_Window* Window)
+LuaTestsScene::LuaTestsScene(Renderer2D* Renderer, SDL_Window* Window)
     : SceneObject(Renderer, Window)
 {
     // Initialise direction to Right (1) before the ViewModel is created.

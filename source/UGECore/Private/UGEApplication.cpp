@@ -14,18 +14,6 @@
 // Static definition
 LaunchSettings UGEApplication::Settings;
 
-UGEApplication::~UGEApplication()
-{
-    // Tear the active scene down while every layer it depends on is still alive.
-    // Scenes may own SDL textures (freed via SDLLayer's renderer) and physics
-    // bodies (freed via PhysicsLayer).  Doing this here — before the m_layers
-    // vector destroys its elements — preserves the ordering guarantees that used
-    // to be provided by SDLLayer owning the scene directly.
-    if (auto* SceneMgr = ServiceLocator::TryGet<SceneManagerLayer>())
-        SceneMgr->UnloadScene();
-
-    ServiceLocator::Clear();
-}
 
 std::expected<std::unique_ptr<UGEApplication>, std::string>
 UGEApplication::Create(int Argc, char* Argv[], LaunchSettings LaunchConfig)
@@ -79,7 +67,7 @@ UGEApplication::Create(int Argc, char* Argv[], LaunchSettings LaunchConfig)
 
 void UGEApplication::Run()
 {
-    //TODO: consider moving target FPS to launch settings/transient
+    //TODO: consider moving target FPS to launch settings/datastore
     constexpr Uint64 TARGET_FRAME_NS = 1'000'000'000ULL / 30; // ~33.33 ms
     Uint64 NextFrame = SDL_GetTicksNS();
     Uint64 LastFrame = NextFrame;
@@ -119,4 +107,28 @@ void UGEApplication::dispatchEvent(SDL_Event& Event)
         if (auto* Handler = dynamic_cast<IEventHandler*>(Layer.get()))
             if (Handler->HandleEvent(Event))
                 return;
+}
+
+UGEApplication::~UGEApplication()
+{
+    // Tear the active scene down while every layer it depends on is still alive.
+    // Scenes may own GPU textures (freed via SDLLayer's device) and physics
+    // bodies (freed via PhysicsLayer).  Doing this here — before the m_layers
+    // vector destroys its elements — preserves the ordering guarantees that used
+    // to be provided by SDLLayer owning the scene directly.
+    if (auto* SceneMgr = ServiceLocator::TryGet<SceneManagerLayer>())
+        SceneMgr->UnloadScene();
+
+    // Destroy layers in reverse of push (load) order (LIFO). Higher-order layers
+    // (RmlUILayer, Render3DObjectLayer, …) own GPU resources created from the device
+    // owned by SDLLayer (load order 4.0). A std::vector otherwise destroys its
+    // elements front-to-back, which would free the device before those layers can
+    // release their resources — a use-after-free. Tearing down last-pushed-first,
+    // while the ServiceLocator entries are still valid, lets each layer release
+    // against a live device. SDLLayer, having the lowest load order, is destroyed
+    // last (after all GPU-owning layers).
+    while (!m_layers.empty())
+        m_layers.pop_back();
+
+    ServiceLocator::Clear();
 }

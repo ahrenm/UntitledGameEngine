@@ -1,7 +1,10 @@
 ﻿#pragma once
-#include <Layers/SDLLayer.h>   // UniqueTexture, LoadTextureFromPhysFS
+#include <Layers/SDLLayer.h>   // GpuTexture, LoadTextureFromPhysFS
+#include <Render/GpuTexture.h>
 #include <expected>
 #include <string>
+
+class Renderer2D;
 
 // ── Sprite ────────────────────────────────────────────────────────────────────
 // Owns a single SDL texture loaded from the PhysFS virtual filesystem.
@@ -20,8 +23,8 @@
 // Drawing (inside Tick()):
 //
 //   SDL_FRect Dest{ x * SX, y * SY, W * SX, H * SY };
-//   m_icon.Draw(m_renderer, Dest);
-//   m_icon.Draw(m_renderer, Dest, SDL_FLIP_HORIZONTAL);  // mirrored
+//   m_icon.Draw(*m_renderer2D, Dest);
+//   m_icon.Draw(*m_renderer2D, Dest, SDL_FLIP_HORIZONTAL);  // mirrored
 class Sprite
 {
 public:
@@ -33,7 +36,7 @@ public:
     Sprite& operator=(Sprite&&)      = default;
 
     // Load a sprite from the PhysFS virtual filesystem.
-    // Both the renderer and PhysFSLayer are resolved internally via ServiceLocator.
+    // The GPU device and PhysFSLayer are resolved internally via ServiceLocator.
     // PaddingH / PaddingV : destination-rect inset applied at draw time (pixels
     //                       in screen space).  The source is sampled at full size.
     // Returns an error string on failure.
@@ -41,10 +44,10 @@ public:
     Load(const char* VirtualPath,
          int PaddingH = 0, int PaddingV = 0);
 
-    // Render the sprite scaled to fit Dest.
+    // Render the sprite scaled to fit Dest through the Core Renderer2D.
     // FlipMode defaults to SDL_FLIP_NONE; pass SDL_FLIP_HORIZONTAL to mirror
     // left↔right, or SDL_FLIP_VERTICAL to mirror top↔bottom.
-    void Draw(SDL_Renderer* Renderer, const SDL_FRect& Dest,
+    void Draw(Renderer2D& Renderer, const SDL_FRect& Dest,
               SDL_FlipMode FlipMode = SDL_FLIP_NONE) const;
 
     // Natural texture dimensions in pixels.
@@ -61,10 +64,10 @@ public:
     [[nodiscard]] int RenderedH() const { return m_height - 2 * m_paddingV; }
 
     // Returns true if this sprite holds a valid texture.
-    [[nodiscard]] bool IsValid() const { return m_texture != nullptr; }
+    [[nodiscard]] bool IsValid() const { return m_texture.IsValid(); }
 
 private:
-    UniqueTexture m_texture{ nullptr };
+    GpuTexture    m_texture;
     int           m_width    = 0;
     int           m_height   = 0;
     int           m_paddingH = 0;

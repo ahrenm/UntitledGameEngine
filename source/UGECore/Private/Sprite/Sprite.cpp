@@ -1,4 +1,5 @@
 ﻿#include <Sprite/Sprite.h>
+#include <Render/Renderer2D.h>
 #include <ServiceLocator.h>
 #include <Layers/SDLLayer.h>
 
@@ -10,27 +11,22 @@ Sprite::Load(const char* VirtualPath, int PaddingH, int PaddingV)
     if (!Result)
         return std::unexpected(Result.error());
 
-    float TexW = 0.0f, TexH = 0.0f;
-    if (!SDL_GetTextureSize(Result->get(), &TexW, &TexH))
-        return std::unexpected(std::string("Sprite: SDL_GetTextureSize failed: ") + SDL_GetError());
-
     Sprite S;
+    S.m_width    = Result->Width();
+    S.m_height   = Result->Height();
     S.m_texture  = std::move(*Result);
-    S.m_width    = static_cast<int>(TexW);
-    S.m_height   = static_cast<int>(TexH);
     S.m_paddingH = PaddingH;
     S.m_paddingV = PaddingV;
     return S;
 }
 
 // ── Sprite::Draw ──────────────────────────────────────────────────────────────
-// Applies PaddingH / PaddingV as an inset on the destination rect before
-// passing to SDL.  The source texture is always sampled at full size (nullptr
-// srcRect = whole texture).
-void Sprite::Draw(SDL_Renderer* Renderer, const SDL_FRect& Dest,
+// Applies PaddingH / PaddingV as an inset on the destination rect before drawing.
+// The source texture is always sampled at full size (nullptr srcRect).
+void Sprite::Draw(Renderer2D& Renderer, const SDL_FRect& Dest,
                   SDL_FlipMode FlipMode) const
 {
-    if (!m_texture) return;
+    if (!m_texture.IsValid()) return;
 
     // Inset destination by padding; source is the full texture (nullptr).
     const SDL_FRect InsetDest{
@@ -40,10 +36,6 @@ void Sprite::Draw(SDL_Renderer* Renderer, const SDL_FRect& Dest,
         Dest.h - static_cast<float>(2 * m_paddingV)
     };
 
-    if (FlipMode == SDL_FLIP_NONE)
-        SDL_RenderTexture(Renderer, m_texture.get(), nullptr, &InsetDest);
-    else
-        SDL_RenderTextureRotated(Renderer, m_texture.get(), nullptr, &InsetDest,
-                                 0.0, nullptr, FlipMode);
+    Renderer.DrawTexture(m_texture, InsetDest, nullptr, FlipMode);
 }
 

@@ -49,7 +49,7 @@ The project builds a **`UGECore` shared library** (`libUGECore.dll`) consumed by
 RmlUi backend sources are compiled into `UGECore` (not directly into the executable):
 
 - `_deps/rmlui-src/Backends/RmlUi_Platform_SDL.cpp`
-- `_deps/rmlui-src/Backends/RmlUi_Renderer_SDL.cpp`
+- `_deps/rmlui-src/Backends/RmlUi_Renderer_SDL_GPU.cpp` (the SDL_GPU render backend)
 
 The macro `RMLUI_SDL_VERSION_MAJOR=3` is defined on `UGECore` (see
 `source/UGECore/CMakeLists.txt`). Public headers are under `source/UGECore/Public/`; use

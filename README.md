@@ -1,6 +1,6 @@
 ﻿# Untitled Game Engine
 
-The Untitled Game Engine is an experimental 2d game engine/framework written entirely by AI, predominantly Claude Sonnet 4.6.
+The Untitled Game Engine is an experimental 2d game engine/framework written entirely by AI, predominantly Claude
 
 A feature demonstration project is included with this repository.
 

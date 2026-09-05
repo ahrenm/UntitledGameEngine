@@ -5,7 +5,7 @@
 #include "../LayerRegistry.h"
 #include <RmlUi/Core.h>
 #include "RmlUi_Platform_SDL.h"
-#include "RmlUi_Renderer_SDL.h"
+#include "RmlUi_Renderer_SDL_GPU.h"
 #include "../PhysFSFileInterface.h"
 #include <SDL3/SDL.h>
 #include <expected>
@@ -34,7 +34,7 @@ class ViewModel;
 //   4. All ViewModels (page-level and fragment-level) are owned by m_pageViewModels
 //      and destroyed together when the page is unloaded.
 //
-// Load order: 6 — runs after LuaLayer and fetches SDL_Window* / SDL_Renderer* from SDLLayer.
+// Load order: 6 — runs after LuaLayer and fetches the SDL_Window* / SDL_GPUDevice* from SDLLayer.
 class RmlUILayer : public AppLayer, public IScriptableObject, public IEventHandler
 {
 public:
@@ -77,7 +77,6 @@ public:
     void BeginFrame();
     void RenderFrame();
     void EndFrame();
-    void Frame(SDL_Renderer* Renderer, SDL_Texture* BgTexture);
 
     // Forward an SDL event to RmlUi
     void ProcessEvent(SDL_Window* Window, SDL_Event& Event);
@@ -123,7 +122,7 @@ private:
     void unloadCurrentPage();
 
     // ── Private constructor ───────────────────────────────────────────────────
-    RmlUILayer(SDL_Window* Window, SDL_Renderer* Renderer);
+    RmlUILayer(SDL_Window* Window, SDL_GPUDevice* Device);
 
     // ── Inner system interface ────────────────────────────────────────────────
     class AppSystemInterface : public SystemInterface_SDL
@@ -137,9 +136,9 @@ private:
         bool LogMessage(Rml::Log::Type Type, const Rml::String& Message) override;
     };
 
-    PhysFSFileInterface  m_fileInterface;
-    AppSystemInterface   m_systemInterface;
-    RenderInterface_SDL  m_renderInterface;
+    PhysFSFileInterface     m_fileInterface;
+    AppSystemInterface      m_systemInterface;
+    RenderInterface_SDL_GPU m_renderInterface;
     SDL_Window*          m_window       = nullptr;  // non-owning; lifetime is SDLLayer's
     Rml::Context*        m_context      = nullptr;
     Rml::ElementDocument* m_currentPage = nullptr;  // non-owning; context holds lifetime

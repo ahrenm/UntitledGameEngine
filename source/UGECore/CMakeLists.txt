@@ -3,9 +3,9 @@
 # All headers under Public/ are exposed to consumers via target_include_directories PUBLIC.
 
 add_library(UGECore SHARED
-    # RmlUi SDL backend — must live in UGECore since RmlUILayer.cpp references these symbols
+    # RmlUi SDL_GPU backend — must live in UGECore since RmlUILayer.cpp references these symbols
     "${rmlui_SOURCE_DIR}/Backends/RmlUi_Platform_SDL.cpp"
-    "${rmlui_SOURCE_DIR}/Backends/RmlUi_Renderer_SDL.cpp"
+    "${rmlui_SOURCE_DIR}/Backends/RmlUi_Renderer_SDL_GPU.cpp"
         Private/UGEApplication.cpp
     Private/ServiceLocator.cpp
     Private/PhysFSFileInterface.cpp
@@ -32,6 +32,11 @@ add_library(UGECore SHARED
     Public/Sprite/AnimatedSprite.h
     Private/Sprite/Sprite.cpp
     Private/Sprite/SpriteSheet.cpp
+
+    Public/Render/GpuTexture.h
+    Public/Render/Renderer2D.h
+    Private/Render/GpuTexture.cpp
+    Private/Render/Renderer2D.cpp
 
     Public/Animation/AnimationControllerBase.h
     Private/Animation/AnimationControllerBase.cpp
@@ -90,8 +95,9 @@ target_link_libraries(UGECore
     PUBLIC
         sol2::sol2
         lua_static             # PUBLIC: sol2 public headers include lua.h directly
+        SDL3_image::SDL3_image # PUBLIC: before SDL3 so the static image archive's
+                               # references to SDL3 core symbols resolve (consumer→provider order)
         SDL3::SDL3             # PUBLIC so SDL3/SDL_main.h is visible in main.cpp
-        SDL3_image::SDL3_image
         physfs-static          # PUBLIC: PhysFSLayer.h includes physfs.h directly
 )
 

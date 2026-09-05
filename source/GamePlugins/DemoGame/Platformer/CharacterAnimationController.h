@@ -44,7 +44,7 @@ struct CharacterAnimInput
 class CharacterAnimationController : public AnimationControllerBase
 {
 public:
-    explicit CharacterAnimationController(SDL_Renderer* Renderer);
+    explicit CharacterAnimationController(Renderer2D* Renderer);
 
     // ── Asset loading ─────────────────────────────────────────────────────────
     // Loads walk, jump, and fall clips from:

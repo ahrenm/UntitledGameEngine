@@ -10,6 +10,12 @@ FetchContent_Declare(
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG main   # or pin to a release tag like "release-3.2.10"
 )
+# Force SDL3 to build as a shared library (SDL3.dll) regardless of the global
+# BUILD_SHARED_LIBS value, which is later forced OFF for FreeType/PhysFS/etc.
+# Without this, a reconfigure picks up BUILD_SHARED_LIBS=OFF from the cache and
+# SDL3 builds static-only, so no SDL3.dll is produced.
+set(SDL_SHARED ON  CACHE BOOL "" FORCE)
+set(SDL_STATIC OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(SDL3)
 
 # Fetch SDL3_image
@@ -108,7 +114,7 @@ FetchContent_Declare(
 )
 set(RMLUI_SAMPLES_ENABLED OFF CACHE BOOL "" FORCE)
 set(RMLUI_TESTS_ENABLED   OFF CACHE BOOL "" FORCE)
-set(RMLUI_BACKEND "SDL_SDLrenderer" CACHE STRING "" FORCE)
+set(RMLUI_BACKEND "SDL_GL3" CACHE STRING "" FORCE)
 FetchContent_MakeAvailable(RmlUi)
 
 # Fetch Box2D 3.x — CPU physics and collision simulation (MIT licence)

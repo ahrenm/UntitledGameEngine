@@ -7,14 +7,17 @@
 #include <string>
 #include <unordered_map>
 
+class Renderer2D;
+
 // ── AnimationControllerBase ───────────────────────────────────────────────────
 // Generic TOML-driven animation controller for game objects.
 // Manages a named registry of SpriteSheet + AnimatedSprite pairs and renders
-// the currently active animation through a bound SDL_Renderer.
+// the currently active animation through a bound Core Renderer2D.
 //
 // Lifecycle
 // ---------
-//   1. Construct with the SDL_Renderer* that will be used for all Draw calls.
+//   1. Construct with the Renderer2D* that will be used for all Draw calls.
+//      Pass GetSDLLayer()->Get2DRenderer() from the owning scene/object.
 //   2. Call LoadAnimation() for each animation clip (reads from UGEDataLayer).
 //   3. Each frame: call Update() then Tick(DeltaTime).
 //
@@ -32,7 +35,7 @@
 class AnimationControllerBase : public GameObjectBase
 {
 public:
-    explicit AnimationControllerBase(SDL_Renderer* Renderer);
+    explicit AnimationControllerBase(Renderer2D* Renderer);
     virtual ~AnimationControllerBase() = default;
 
     // ── Asset loading ─────────────────────────────────────────────────────────
@@ -65,7 +68,7 @@ public:
     void Draw(const SDL_FRect& Rect, SDL_FlipMode FlipMode = SDL_FLIP_NONE) const;
 
 protected:
-    SDL_Renderer* m_renderer = nullptr;
+    Renderer2D* m_renderer2D = nullptr;
 
     struct AnimEntry
     {

@@ -1,9 +1,10 @@
 #include <Animation/AnimationControllerBase.h>
+#include <Render/Renderer2D.h>
 #include <Layers/UGEDataLayer.h>
 
 // ── Constructor ───────────────────────────────────────────────────────────────
-AnimationControllerBase::AnimationControllerBase(SDL_Renderer* Renderer)
-    : m_renderer(Renderer)
+AnimationControllerBase::AnimationControllerBase(Renderer2D* Renderer)
+    : m_renderer2D(Renderer)
 {}
 
 // ── LoadAnimation ─────────────────────────────────────────────────────────────
@@ -93,8 +94,9 @@ void AnimationControllerBase::Tick(float DeltaTime)
 
 void AnimationControllerBase::Draw(const SDL_FRect& Rect, SDL_FlipMode FlipMode) const
 {
+    if (!m_renderer2D) return;
     if (const auto* entry = getEntry(m_currentAnim))
-        entry->Anim.Draw(m_renderer, Rect, FlipMode);
+        entry->Anim.Draw(*m_renderer2D, Rect, FlipMode);
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────

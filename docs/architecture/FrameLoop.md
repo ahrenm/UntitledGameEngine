@@ -13,8 +13,10 @@ Related: [LayerSystem.md](LayerSystem.md) · [Physics.md](../systems/Physics.md)
 Each game tick has two phases:
 
 1. **Update phase** — `Update()` is called on each layer in **push order** (input → logic).
-2. **Draw phase** — `m_sdlLayer->BeginFrame()` clears the renderer, then `Draw(float deltaTime)`
-   is called on each layer in **push order**, then `m_sdlLayer->EndFrame()` presents last.
+2. **Draw phase** — `m_sdlLayer->BeginFrame()` acquires the frame's `SDL_GPU` command buffer +
+   swapchain texture and clears it to black, then `Draw(float deltaTime)` is called on each layer
+   in **push order** (each records a render pass into the shared command buffer), then
+   `m_sdlLayer->EndFrame()` submits the command buffer last.
 
 If execution falls more than one full frame behind, `NextFrame` is reset to avoid catch-up
 bursts.
@@ -27,10 +29,10 @@ Because layers tick in push (load) order, the following composition emerges each
 
 | Load order | Layer | Update phase | Draw phase |
 |---|---|---|---|
-| 4.0 | `SDLLayer` | polls SDL input, dispatches events | blits background + presents (Begin/End) |
+| 4.0 | `SDLLayer` | polls SDL input, dispatches events | clears swapchain + submits (Begin/End) |
 | 4.05 | `SceneManagerLayer` | `Scene::Update()` | `Scene::Draw(dt)` (beneath overlays) |
 | 4.1 | `PhysicsLayer` | `b2World_Step` + contacts + state sync | debug AABB overlay only |
-| 4.5 | `Render3DLayer` (plugin) | — | 3D viewport composite |
+| 4.5 | `Render3DObjectLayer` (plugin) | — | 3D viewport composite |
 | 5 | `LuaLayer` | runs tick functions | — |
 | 6 | `RmlUILayer` | — | composites UI on top |
 

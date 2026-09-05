@@ -1,8 +1,9 @@
 #include "CharacterAnimationController.h"
 #include <Layers/SDLLayer.h>
+#include <Render/Renderer2D.h>
 
 // ── Constructor ───────────────────────────────────────────────────────────────
-CharacterAnimationController::CharacterAnimationController(SDL_Renderer* Renderer)
+CharacterAnimationController::CharacterAnimationController(Renderer2D* Renderer)
     : AnimationControllerBase(Renderer)
 {}
 
@@ -86,7 +87,7 @@ void CharacterAnimationController::Tick(float DeltaTime, const CharacterAnimInpu
 // ── DrawFallback ──────────────────────────────────────────────────────────────
 void CharacterAnimationController::DrawFallback(const SDL_FRect& Rect)
 {
-    SDL_SetRenderDrawColor(m_renderer, 30, 100, 220, 255);
-    SDL_RenderFillRect(m_renderer, &Rect);
+    if (m_renderer2D)
+        m_renderer2D->DrawColoredQuad(Rect, SDL_FColor{ 30 / 255.0f, 100 / 255.0f, 220 / 255.0f, 1.0f });
 }
 

@@ -18,7 +18,7 @@ class StateAssetsDemoScene : public SceneObject
 public:
     REGISTER_SCENE("state-assets-demo", StateAssetsDemoScene)
 
-    StateAssetsDemoScene(SDL_Renderer* Renderer, SDL_Window* Window);
+    StateAssetsDemoScene(Renderer2D* Renderer, SDL_Window* Window);
 
     // Shared DataStore keys (UI ↔ Scene bridge) live in StateAssetsDemoKeys.h so
     // the ViewModel can reference them without depending on this Scene.

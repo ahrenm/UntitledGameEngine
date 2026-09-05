@@ -15,6 +15,6 @@ class LuaTestsScene : public SceneObject
 public:
     REGISTER_SCENE("lua-tests", LuaTestsScene)
 
-    LuaTestsScene(SDL_Renderer* Renderer, SDL_Window* Window);
+    LuaTestsScene(Renderer2D* Renderer, SDL_Window* Window);
 };
 

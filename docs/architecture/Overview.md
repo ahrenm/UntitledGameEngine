@@ -34,7 +34,7 @@ The project is organized into three broad subsystems:
    - **Game Scenes & ViewModels** + supporting code (e.g. `DemoGame/Platformer/` —
      platformer scene, character physics, HUD)
    - **Shared/Reusable Components** (e.g. `UIWindows/` — base window model, derived windows)
-   - **Custom Layers** (e.g. `TeaPot3D/Render3DLayer` — alternative rendering backend)
+   - **Custom Layers** (e.g. `TeaPot3D/Render3DObjectLayer` — alternative rendering backend)
    - All registered via static `REGISTER_LAYER` / `REGISTER_SCENE` / `REGISTER_VIEWMODEL`
      macros; discovered automatically at DLL load.
 

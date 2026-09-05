@@ -2,6 +2,8 @@
 #include <Sprite/SpriteSheet.h>
 #include <SDL3/SDL.h>
 
+class Renderer2D;
+
 // ── AnimatedSprite ────────────────────────────────────────────────────────────
 // Stateful animation controller referencing a SpriteSheet.
 // Does not own the sheet — the scene that creates the AnimatedSprite must ensure
@@ -24,7 +26,7 @@
 //   // Tick (render pass — advance then draw)
 //   SDL_FRect Dest{ ... };
 //   m_walkAnim.Tick(DeltaTime);
-//   m_walkAnim.Draw(m_renderer, Dest);
+//   m_walkAnim.Draw(*m_renderer2D, Dest);
 struct AnimatedSprite
 {
     const SpriteSheet* Sheet         = nullptr;  // non-owning
@@ -49,7 +51,7 @@ struct AnimatedSprite
     // ── Draw the current frame scaled to fit Dest. ────────────────────────────
     // FlipMode mirrors the sprite — use SDL_FLIP_HORIZONTAL to reverse the
     // sprite when the character changes walking direction.
-    void Draw(SDL_Renderer* Renderer, const SDL_FRect& Dest,
+void Draw(Renderer2D& Renderer, const SDL_FRect& Dest,
               SDL_FlipMode FlipMode = SDL_FLIP_NONE) const
     {
         if (!Sheet) return;

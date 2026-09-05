@@ -69,7 +69,7 @@ void SceneManagerLayer::loadSceneNow(const char* SceneName)
         return;
     }
 
-    auto NewScene = SceneRegistry::Instance().Create(SceneName, Sdl->Renderer(), Sdl->Window());
+    auto NewScene = SceneRegistry::Instance().Create(SceneName, Sdl->Get2DRenderer(), Sdl->Window());
     if (!NewScene)
     {
         Log(std::format("[Scene] LoadScene: no scene registered for '{}'", SceneName));

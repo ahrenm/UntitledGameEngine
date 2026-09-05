@@ -1,15 +1,19 @@
 ﻿#include "PlatformerScene.h"
 #include <Layers/PhysicsLayer.h>
+#include <Render/Renderer2D.h>
 #include <sol/sol.hpp>
 
 // ── Constructor ───────────────────────────────────────────────────────────────
-PlatformerScene::PlatformerScene(SDL_Renderer* Renderer, SDL_Window* Window)
+PlatformerScene::PlatformerScene(Renderer2D* Renderer, SDL_Window* Window)
     : SceneObject(Renderer, Window)
 {
     auto* dataLayer = GetDataLayer();
     auto* physics   = GetPhysicsLayer();
 
     auto& Store = dataLayer->Store;
+
+    //Convenience lambdas to get data from the store
+    //TOML files in {assets}/DATA are pre-loaded into the data store at startup, so we can query them here.
     auto dsStr = [&](const char* Path) -> std::optional<std::string> {
         if (const DataValue* V = Store.Get(std::string(PLATFORMER_DATA_KEY) + "." + Path))
             if (const std::string* S = V->TryAs<std::string>()) return *S;
@@ -152,11 +156,12 @@ void PlatformerScene::Draw(float DeltaTime)
         if (!T.IsVisible) return;
         const SDL_FRect Rect = WorldRect(T.X, T.Y, T.SIZE_W, T.SIZE_H);
         if (T.Spr)
-            T.Spr->Draw(m_renderer, Rect);
-        else
+            T.Spr->Draw(*m_renderer2D, Rect);
+        else //Fallback
         {
-            SDL_SetRenderDrawColor(m_renderer, T.Color.r, T.Color.g, T.Color.b, T.Color.a);
-            SDL_RenderFillRect(m_renderer, &Rect);
+            m_renderer2D->DrawColoredQuad(Rect, SDL_FColor{
+                T.Color.r / 255.0f, T.Color.g / 255.0f,
+                T.Color.b / 255.0f, T.Color.a / 255.0f });
         }
     };
 

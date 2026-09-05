@@ -1,6 +1,7 @@
 #include <Layers/PhysicsLayer.h>
 #include <Layers/SDLLayer.h>
 #include <Layers/LoggingLayer.h>
+#include <Render/Renderer2D.h>
 #include <ServiceLocator.h>
 #include <UGEApplication.h>
 #include <Camera2D.h>
@@ -301,12 +302,24 @@ void PhysicsLayer::drawDebug() const
 {
     auto* sdl = ServiceLocator::TryGet<SDLLayer>();
     if (!sdl) return;
-    SDL_Renderer*    renderer = sdl->Renderer();
+    Renderer2D* r2d = sdl->Get2DRenderer();
+    if (!r2d) return;
     const Camera2D&  cam      = sdl->GetCamera();
     const float      refH     = static_cast<float>(sdl->RefHeight());
     const float      ppm      = m_pixelsPerMeter;
 
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    // Filled quad + rectangle outline (4 thin quads) helpers using normalized colors.
+    auto fill = [&](const SDL_FRect& rect, Uint8 R, Uint8 G, Uint8 B, Uint8 A) {
+        r2d->DrawColoredQuad(rect, SDL_FColor{ R / 255.0f, G / 255.0f, B / 255.0f, A / 255.0f });
+    };
+    auto outline = [&](const SDL_FRect& rect, Uint8 R, Uint8 G, Uint8 B, Uint8 A) {
+        const SDL_FColor c{ R / 255.0f, G / 255.0f, B / 255.0f, A / 255.0f };
+        constexpr float t = 2.0f; // outline thickness in reference pixels
+        r2d->DrawColoredQuad(SDL_FRect{ rect.x, rect.y, rect.w, t }, c);                    // top
+        r2d->DrawColoredQuad(SDL_FRect{ rect.x, rect.y + rect.h - t, rect.w, t }, c);       // bottom
+        r2d->DrawColoredQuad(SDL_FRect{ rect.x, rect.y, t, rect.h }, c);                    // left
+        r2d->DrawColoredQuad(SDL_FRect{ rect.x + rect.w - t, rect.y, t, rect.h }, c);       // right
+    };
 
     for (const auto& [id, be] : m_impl->bodies)
     {
@@ -326,24 +339,19 @@ void PhysicsLayer::drawDebug() const
         if (isSensor)
         {
             // Sensor body (e.g. coins, trigger zones) — green outline, no fill.
-            SDL_SetRenderDrawColor(renderer, 0, 230, 100, 200);
-            SDL_RenderRect(renderer, &rect);
+            outline(rect, 0, 230, 100, 200);
         }
         else if (bt == b2_staticBody)
         {
             // Solid static body (terrain, walls) — blue tint fill + brighter outline.
-            SDL_SetRenderDrawColor(renderer, 80, 120, 255, 50);
-            SDL_RenderFillRect(renderer, &rect);
-            SDL_SetRenderDrawColor(renderer, 80, 120, 255, 180);
-            SDL_RenderRect(renderer, &rect);
+            fill(rect, 80, 120, 255, 50);
+            outline(rect, 80, 120, 255, 180);
         }
         else
         {
             // Dynamic / kinematic body (player, moving objects) — amber fill + outline.
-            SDL_SetRenderDrawColor(renderer, 255, 200, 50, 55);
-            SDL_RenderFillRect(renderer, &rect);
-            SDL_SetRenderDrawColor(renderer, 255, 200, 50, 200);
-            SDL_RenderRect(renderer, &rect);
+            fill(rect, 255, 200, 50, 55);
+            outline(rect, 255, 200, 50, 200);
         }
     }
 }

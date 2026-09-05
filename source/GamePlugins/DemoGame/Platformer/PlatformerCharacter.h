@@ -20,7 +20,7 @@ public:
     static constexpr float COLLISION_X_OFFSET = (PLAYER_W - COLLISION_W) / 2.0f;
 
     // DatasetKey = TOML dataset for sprite / animation config
-    PlatformerCharacter(SDL_Renderer* Renderer, SDL_Window* Window,
+    PlatformerCharacter(Renderer2D* Renderer, SDL_Window* Window,
                         const char* DatasetKey);
 
     void Update()                      override;

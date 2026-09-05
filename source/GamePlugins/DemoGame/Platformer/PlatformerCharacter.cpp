@@ -6,7 +6,7 @@
 #include <sol/sol.hpp>
 
 // ── Constructor ───────────────────────────────────────────────────────────────
-PlatformerCharacter::PlatformerCharacter(SDL_Renderer* Renderer, SDL_Window* Window,
+PlatformerCharacter::PlatformerCharacter(Renderer2D* Renderer, SDL_Window* Window,
                                          const char* DatasetKey)
     : SceneObject(Renderer, Window)
     , m_animController(Renderer)
